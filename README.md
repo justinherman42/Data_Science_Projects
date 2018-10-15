@@ -1,2 +1,4 @@
 # Data_Science_Projects
-Collection of Data Science and Data Analysis Projects
++ Projects are split into two main folders
+  + R based projects
+  + Python projects
