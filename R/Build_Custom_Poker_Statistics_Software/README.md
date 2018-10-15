@@ -14,3 +14,8 @@
         - Most importantly it contains a notes box I will be able to display my concatenated string in
     + Step 3 Insert the values of of query Postgres DB into my pokersite xml file 
         - Load poker site and validate that my notes have updated with my concatenated string
+
+
+## Please see Rpubs file for executed script
+
+[Rpubs_project_link](https://rpubs.com/justin_herman_42/385739)
