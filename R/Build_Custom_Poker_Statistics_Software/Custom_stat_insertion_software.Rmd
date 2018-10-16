@@ -1,0 +1,465 @@
+---
+title: "607_Final_Project- Poker Database Note Automation "
+author: "Justin Herman"
+output:
+  html_document:
+    theme: "simplex"
+    highlight: 'pygments'
+    toc: true
+    toc_float: true
+    
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Project Goals
+
+### **Problem**
++ I play online poker professionally and a key to my success is the player stats I use to identify players habbits 
++ In order to get these stats I purchased a poker program which takes text files(Hand histories) created by my poker site for every hand and creates and stores stats from these files inside a Postgres DB   
++ My problem is that one of the sites that I play on, no longer offers these text files and therefore my software program no longer displays these stats for me   
+
+### **Solution** 
++ Automate stat insertion into my poker site's XML note file
+    + Step 1 Query Postgres DB to create a dataframe of statistics
+        - This dataframe will store two columns: playername, concatenated string(playerstats)
+    + Step 2 Read in Poker site's existing XML notes file
+        - File consists of all poker table graphics
+        - Most importantly it contains a notes box I will be able to display my concatenated string in
+    + Step 3 Insert the values of of query Postgres DB into my pokersite xml file 
+        - Load poker site and validate that my notes have updated with my concatenated string
+<br /> 
+
+
+### Postgres Tables
+
++ 37 tables of information
+
+
+![](https://github.com/justinherman42/Data_Science_Projects/blob/master/R/Build_Custom_Poker_Statistics_Software/Images_folder/sql_db.PNG)
+
+
+
+### Hand Histories File Image    
++ Text file that saves to computer after every hand
+    + Describes the actions players take in a hand, as well as general identifiable information like playernames, seat numbers, table id, buyins and stakes played
++ Poker software takes this text file and behind the scenes converts and stores the information as stats in the above Postgres DB
++ My Poker software also uses these text files to recognize the table I am sitting at, and to display a HUD of player statistics as seen in table of contents(Hud File Image).
++ My site will no longer provide me with these text files.  Therefore the software will no longer display stats 
+<br />
+<br />
+
+![](https://github.com/justinherman42/Data_Science_Projects/blob/master/R/Build_Custom_Poker_Statistics_Software/Images_folder/hand_history_image.PNG)
+
+### Hud File Image
+
++ On the left is a general popup with many poker stats
++ On the right is an example of what the poker table looks like and the stats I see at the table
++ Each one of these stats, has their own popup(overall hundreds of stats)
++ I want to mimic the text boxes on the right by recreating them as a text insertion into my sites  notes popup(as seen in table of contents Site Note Popup)
+
+![](https://github.com/justinherman42/Data_Science_Projects/blob/master/R/Build_Custom_Poker_Statistics_Software/Images_folder/HUD_Image.PNG)
+
+### Site Note Popup
+
++ On the left is an example of my poker site.
++ On the right is the notes popup which can be accessed by right clicking a player image
+    + This note file is structured by the below XML structure as seen in table of contents (XML Note File)
+
+
+![](https://github.com/justinherman42/Data_Science_Projects/blob/master/R/Build_Custom_Poker_Statistics_Software/Images_folder/site_xml_popup.PNG)
+
+### XML Note File
++ The quicknote tag is the tag I need to insert my notes into in order for them to display in the "write notes on box" above (table of contents Site note popup)
+
+
+![](https://github.com/justinherman42/Data_Science_Projects/blob/master/R/Build_Custom_Poker_Statistics_Software/Images_folder/XML_file.PNG)
+
+
+ 
+##  Load Libraries and Store Passwords
+
+```{r,echo=FALSE}
+rm(list = ls())
+library(XML)
+require("RPostgreSQL")
+library(kableExtra)
+library(knitr)
+# library(data.table)
+library(psych)
+library(tidyverse)
+library(xml2)
+pw <- "password"
+drv <- dbDriver("PostgreSQL")
+con <- dbConnect(drv, dbname = "2017_DB", host = "localhost", port = 5432, 
+    user = "postgres", password = pw)
+
+```
+
+## Do Stats Really Matter?
+
+
+
+### Explanation of Stats
++ As this is the only poker technical area in this project, I provide a brief explanation of some poker stats. 
++ In texas holdem players are all given two cards and are presented with a betting decision based on only their individual cards. From there they are presented with decisions on what to do as 5 community cards come out over three more rounds of betting.   
++ There are thousands of combinations of hands and hundreds of stats to choose from, but the stats I chose have to do with the first decision every player has to make: 
+    + VPIP = How often someone calls their hand `Or` raises/ total hands played
+        + Ideal range for this stat is from (22-28)
+    + PFR= how often someone raises their hand / /total hands played 
+        + Ideal range for this stat is from (16-22)
+    + VPIP includes the entire set of PFR 
+    + BB/100= how many bets a player wins per 100 hands(how much someone wins)
+        + Typically any win rate above 4/bb 100 is considered a solid winning player
+        + This stat can be both positive and negative, negative represents losing players
++ Both VPIP and PFR are two of the fastest stats to normalize.  Every hand that someone plays they are faced with a decision that counts toward each of these stats.  Therefore they provide the most immediate information about an opponent and are great proxy's for categorizing players
+
+
+#### Using the Gap Between VPIP-PFR as a Proxy for Winrates(bb/100)
+>"If it's good enough to call you gotta be in there raising, all right. I mean tight but aggressive, and I do mean aggressive. That's your style, Professor. I mean you gotta ...you gotta think of it as a war." --- Mike (Matt Damon) in Rounders speaking to his Law Professor (Martin Landau). 
+
++ I display a DF below from some of the query's of my Postgres DB.(these querys were done later on in my project flow).  I want to use this DF to show you how important the above quote actually is and how much information 2 stats can provide us with.
++ While PFR and VPIP normalize quickly, bb/100 doesn't.  It could take thousands of hands to normalize
+    + With this in mind I decided to create a filter of at least 500 hands played   
++  Split DF into 2 stratas
+    + small gap- consists of players who have played at least 500 hands, and whose VPIP-PFR<10
+    + wide gap- consists of players who have played at least 500 hands, and whose VPIP-PFR is >20
+
+
+```{r}
+my_607 <- read_csv("https://raw.githubusercontent.com/justinherman42/Justin-Data-607/master/final%20project/vpip-pfr_analysis.csv")
+my_607 <- my_607 %>% 
+    filter(total_hands > 500)
+small_gap <- my_607 %>% 
+    filter(vpip - pfr < 10)
+
+wide_gap <- my_607 %>% 
+    filter(vpip - pfr > 20)
+par(mfrow = c(2, 1))
+
+hist(small_gap$bb_per_100)
+hist(wide_gap$bb_per_100)
+
+small_gap <- small_gap %>% 
+    select(small_vpip = vpip, small_pfr = pfr, small_bb_per_100 = bb_per_100) %>% 
+    describe(.)
+wide_gap <- wide_gap %>% select(wide_vpip = vpip, wide_pfr = pfr, wide_bb_100 = bb_per_100) %>% 
+    describe(.)
+kable(rbind(small_gap, wide_gap))
+```
+
+### Analysis
++ Small gap  
+    + mean bb/100 = 2.02,
+    + mean VPIP   = 23.8
+    + mean PFR    = 17.05
++ Wide gap
+    + mean bb/100 = -29.86
+    + mean VPIP   = 45.4
+    + mean PFR    = 12.17
++ Median stats are very similiar to the mean stats
++ As you can see the average small gap player is a winning player and the average wide gap player is losing alot, nearly 15x more than the winning players are winning 
++ Poker is an extremely complicated game, with thousands of hand combinations.  But this shows that on average, if you can't make the simplest decision on how to play your hand, you are likely going to be a losing player.  
++ I hope these proxy stats show the urgency I felt in needing to find a way to keep these stats visible in order to determine how to play against my opponents
+
+
+
+## Explore Postgres DB
+
+### Test Connection  
+
+```{r,echo=FALSE}
+tryCatch({
+    drv <- dbDriver("PostgreSQL")
+    print("Connecting to database")
+    conn <- con
+    print("Connected!")
+}, error = function(cond)
+{
+    print("Unable to connect to database.")
+})
+```
+
+### Run query's on Postgres DB 
++ Out of 37 tables in the Postgres DB, two contain the information I need 
++ Table **Players**- Loaded into R as DF **player_names_site_id** 
+    + 40k observations
+    + Shares Player_id column with other table
+        + Player id is in unique value form in this table
+    + Contains player screen names(only table that does)
+    + Contains poker site id
+        + I play on multiple sites, the site that no longer collects hands is siteid=12
++ Table **compiledplayerresults** Loaded into R as DF **player_stats** 
+    + 430k observations
+        + Player id isn't unique in this table.  It is in a long format wherein each month a player plays is considered a single observation
+    + Contains all player statistics(bread and butter)
+
+
+```{r}
+# Grab screennames
+player_names_site_id <- dbGetQuery(conn, "SELECT * FROM players")
+# Grab stats
+player_stats <- dbGetQuery(conn, "SELECT * FROM compiledplayerresults limit 1000000")
+kable(head(player_names_site_id))
+```
+
+
+
+```{r}
+kable(head(player_stats))
+```
+
+
+### Joining both query's to build our DF 
++ Filter `player_names_site_id` by pokersite id 
+    + Create a vector of Screennames exclusively with pokersite id=12 and filter my other DF `player stats` for screennames in this vector.
++ Select (playername,player_id) from `player_names_site_id`
++ Join DF's on player_id
++ This concludes our Postgres manipulation.  `merged_wsop_db` is a DF with all the stats and screen names that I need filtered for the poker site I desire.  It is in a long format which will be addressed in the next section by summarizing by screen name
+
+
+```{r}
+wsop_players <- player_names_site_id %>% 
+    filter(., pokersite_id == 12) %>% 
+    select(., c(playername, player_id))
+# Extract player ids
+player_ids <- wsop_players$player_id
+# Filter other DF by player ids from last filtered query
+wsop_player_stats <- player_stats %>% 
+    filter(., player_id %in% player_ids)
+# Merge DFs on player id
+merged_wsop_db <- merge(wsop_player_stats, wsop_players, by = "player_id", 
+    all = TRUE)
+kable(merged_wsop_db[1:5, ])
+```  
+
+
+## Data Manipulation in R
+
+### Custom Stat Creation
++ Grab the stats I need
++ Group by Playername(screenname) to aggregate by player(turns each player into unique observation(row))
++ Build desired stats 
+
+```{r}
+# Create function to round and sum vectors
+#vector x, vector y, round integer z
+trans_func <- function(x, y, z)
+{
+    round(sum(x)/sum(y) * 100, z)
+}
+
+columns_for_analysis <- c("gametype_id", "player_id", "totalhands", "totalbbswon", 
+    "totalrakeincents", "totalamountwonincents", "vpiphands", "pfrhands", 
+    "couldcoldcall", "didcoldcall", "couldthreebet", "didthreebet", "couldsqueeze", 
+    "didsqueeze", "facingtwopreflopraisers", "calledtwopreflopraisers", 
+    "raisedtwopreflopraisers", "smallblindstealattempted", "smallblindstealdefended", 
+    "smallblindstealreraised", "bigblindstealattempted", "bigblindstealdefended", 
+    "bigblindstealreraised", "facedthreebetpreflop", "foldedtothreebetpreflop", 
+    "calledthreebetpreflop", "raisedthreebetpreflop", "facedfourbetpreflop", 
+    "foldedtofourbetpreflop", "calledfourbetpreflop", "raisedfourbetpreflop", 
+    "sawflop", "wonhandwhensawflop", "sawshowdown", "wonshowdown", "flopcontinuationbetpossible", 
+    "flopcontinuationbetmade", "turncontinuationbetpossible", "turncontinuationbetmade", 
+    "rivercontinuationbetpossible", "rivercontinuationbetmade", "facingflopcontinuationbet", 
+    "foldedtoflopcontinuationbet", "calledflopcontinuationbet", "raisedflopcontinuationbet", 
+    "facingturncontinuationbet", "foldedtoturncontinuationbet", "calledturncontinuationbet", 
+    "raisedturncontinuationbet", "facingrivercontinuationbet", "foldedtorivercontinuationbet", 
+    "calledrivercontinuationbet", "raisedrivercontinuationbet", "playername")   
+              
+## create custom stats
+
+ my_wsop_finished_db <- merged_wsop_db %>% 
+    select(c(columns_for_analysis)) %>%  
+    group_by(playername) %>% 
+    summarize(
+vpip             = round(sum(vpiphands)/sum(totalhands)*100,1),
+pfr              =round(sum(pfrhands)/sum(totalhands)*100,1),
+total_hands      =  sum(totalhands),
+money_won        =  sum(totalamountwonincents),
+rake             =  sum(totalrakeincents),
+coldcall         =  trans_func(didcoldcall/couldcoldcall,1),
+threebet         =  trans_func(didthreebet/couldthreebet,1),
+squeeze          =  trans_func(didsqueeze/couldsqueeze,1),
+bb_per_100       =  round(sum(totalbbswon)/(sum(totalhands)/100),2),
+total_rake_100   =  round((sum(totalrakeincents)/100)/sum(totalhands),2),
+money_won_100    =  round((sum(totalamountwonincents)/100)/(sum(totalhands)/100),2),
+cc_3b            =  trans_func(calledtwopreflopraisers/facingtwopreflopraisers,1),
+cc_4bet          =  trans_func(raisedtwopreflopraisers/facingtwopreflopraisers,1),
+def_sb           =  trans_func(smallblindstealdefended/smallblindstealattempted,1),
+three_bet_sb     = trans_func(smallblindstealreraised/smallblindstealattempted,1),
+defends_bb       = trans_func(bigblindstealdefended/bigblindstealattempted,1),
+three_bet_from_bb= trans_func(bigblindstealreraised/bigblindstealattempted,1),
+fold_3_bet       = trans_func(foldedtothreebetpreflop/facedthreebetpreflop,1),
+four_bet         = trans_func(raisedthreebetpreflop/facedthreebetpreflop,1),      
+fold_4_bet       = trans_func(foldedtofourbetpreflop/facedfourbetpreflop,1),
+five_bet         =trans_func(raisedfourbetpreflop/facedfourbetpreflop,1),
+wwsf             = trans_func(wonhandwhensawflop/sawflop,1),
+won_sd           = trans_func(wonshowdown/sawshowdown,1),
+flop_cbet        = trans_func(wonshowdown/sawshowdown,1),
+turn_cbet        = trans_func(turncontinuationbetmade,turncontinuationbetpossible,1),
+river_cbet       = trans_func(rivercontinuationbetmade,rivercontinuationbetpossible,1),
+fold_flob_cbet   =trans_func(foldedtoflopcontinuationbet,facingflopcontinuationbet,1),
+fold_turn_cbet   =trans_func(foldedtoturncontinuationbet,facingturncontinuationbet,1),
+fold_river_cbet  =trans_func(foldedtorivercontinuationbet,facingrivercontinuationbet,1),
+raise_flop_cbet  =trans_func(raisedflopcontinuationbet,facingflopcontinuationbet,1),
+raise_turn_cbet  =trans_func(raisedturncontinuationbet,facingturncontinuationbet,1),
+raise_river_cbet =trans_func(raisedrivercontinuationbet,facingrivercontinuationbet,1),
+wtsd             =trans_func(sawshowdown/sawflop,1))
+                  
+## Display DF summarized by player with custom stats
+kable(head(my_wsop_finished_db,10))
+## save to csv
+write.csv(my_wsop_finished_db,"wsop_table.csv")
+```
+
+
+### Building a Structure for How I Want to Display Eventual Notes
++ CSV import for reproducibility 
++ Order matters for my notes
++ Desired output will be multi line note based on stats columns
+  + 4 lines( will resolve this issue in block below)
+  + Set a minimum of 10 hands requirement
+    + Stats under 10 hands are essentially to random to be useful
+```{r}
+wsop <- read_csv("https://raw.githubusercontent.com/justinherman42/Justin-Data-607/master/final%20project/wsop_table.csv")
+colnames(wsop)
+wsop2 <- wsop %>% 
+    filter(., total_hands > 10) %>% 
+    replace(is.na(.),0) %>% 
+    select(., c(playername, vpip, pfr, threebet, fold_3_bet, 
+    squeeze, total_hands, def_sb, defends_bb, three_bet_sb, four_bet, 
+    fold_4_bet, five_bet, fold_flob_cbet, raise_flop_cbet, fold_turn_cbet, 
+    raise_turn_cbet, fold_river_cbet, raise_river_cbet, flop_cbet, 
+    turn_cbet, river_cbet, won_sd, cc_3b, cc_4bet, wwsf, wtsd))
+```
+
+
+### Create a Function to Turn Every Row(Player),Into One Giant Concatenated String  
++ I want to concatenate my values in the form (colname-colvalue)
++ I have a 50 character limit in the note file per line so I need to abbreviate column names
++ I want to structure my data across 4 lines
+    + I struggled with a solution here for a long time.  
+    + Workaround to avoid reg expressions, Columns that need to be on a newline were renamed with a new line special character `('\r\n')`
+        + For example `VPIP` becomes `\r\n;VPIP`
+        + When this string is inserted into my XML file, it interprets the line break 
+```{r}
+rename_col_attempt_db <- wsop2
+rename_col_attempt_db <- rename_col_attempt_db %>% 
+    rename(`\r\nDSB` = def_sb, `\r\nFoldf` = fold_flob_cbet, 
+       `\r\nBetf` = flop_cbet, SN = playername, V = vpip, 
+       PF = pfr, `3B` = threebet, F3B = fold_3_bet, SQ = squeeze, 
+       H = total_hands, DBB = defends_bb, `3BSB` = three_bet_sb, 
+       `4B` = four_bet, F4B = fold_4_bet, `5B` = five_bet, 
+       RF = raise_flop_cbet, FT = fold_turn_cbet, RT = raise_turn_cbet, 
+       FR = fold_river_cbet, RR = raise_river_cbet, BT = turn_cbet, 
+       BR = river_cbet, W_sd = won_sd, CC3 = cc_3b, CC4 = cc_4bet)
+
+# Store colnames as vector to use in function below
+my_names <- colnames(rename_col_attempt_db)
+# Get rid of whitespace
+player_note_vector <- apply(rename_col_attempt_db, 2, function(x) gsub("\\s+", 
+    "", x))
+# Create function to make big string
+player_note_vector <- apply(player_note_vector, 1, function(x)
+{
+    my_string <- do.call(paste, as.list(c(x, sep = ",")))
+    my_string <- trimws(my_string, which = c("both", "left", 
+        "right"))
+    my_string <- unlist(strsplit(my_string, split = ","))
+    my_string <- paste(my_names, my_string, sep = "-")
+    my_string <- paste(my_string, collapse = " ")
+    return(my_string)
+})
+# Display concatenated strings
+player_note_vector[1:2]
+```
+
+## Create Dataframe Consisting of My String(Player Note) and Screennames
++ Create vector my_sns
++ Build dataframe with my_sns and player_note_vector  
+
+```{r}
+my_sns <- rename_col_attempt_db$SN
+finished_postgres_db <- data.frame(my_sns, player_note_vector, stringsAsFactors = FALSE)
+## display finished postgres db
+finished_postgres_db[1:5, ] %>% 
+    kable("html") %>% 
+    kable_styling()
+```
+
+
+## Load in XML Notes File
++ 3800 players in that file 
+    
+```{r}
+note_file <- read_xml("notes.xml")
+head(xml_children(note_file))
+# Extract playername as text from xml
+quick_notes <- xml_find_all(note_file, ".//quickNote")
+quick_notes_txt <- xml_text(quick_notes)
+playerNames <- xml_find_all(note_file, ".//playerName")
+XML_player_names <- xml_text(playerNames)
+# Test how many shared values there are between sqldb and xml
+n <- 0
+for (x in my_sns)
+{
+    if (x %in% XML_player_names)
+    {
+        n <- n + 1
+    }
+}
+print(n)
+```
+
++ We now know that out of a possible 3882 unique playernames in my XML file, my personal DB contains 3775- not bad
+
+## Join XML With Postgres DF
++  The trick here is that I can't change the order of the XML entries, so I must manipulate our Postgres notes DF to match the ordering in our xml file 
++ This is why we needed to create a Postgres DF containing (screennames,playernote) as we need a shared column to join on
+    + Manipulate colnames to create shared key for join
+        + Plyr allows us to join on only the rows in the document we request, which gives us a sorted DF to be inserted into xml that maps to the row indexing order of the original XML file 
+    
+
+```{r}
+## Print for comparison of XML and Postgres indexing
+XML_player_names[1:10]
+finished_postgres_db$my_sns[1:10]
+
+## Rename columns and join on shared column maintaing xml order
+xml_ordered_names <- data.frame(XML_player_names, stringsAsFactors = FALSE)
+colnames(xml_ordered_names) <- c("my_sns")
+df_for_xml <- plyr::join(xml_ordered_names, finished_postgres_db)
+
+## Display our final DF 
+df_for_xml[1:5,] %>%
+  kable("html") %>%
+  kable_styling()
+```
+
+
+## Last step-Inserting our Postgres Notes Into Quicknotes Node of XML
++ https://stackoverflow.com/questions/43286759/how-to-update-xml-attributes-without-using-a-loop-with-the-xml2-r-package
+```{r}
+
+## insertion
+xml_text(quick_notes) <- df_for_xml$player_note_vector[match(XML_player_names,
+                                                             df_for_xml$my_sns)]
+
+## write xml to disk
+write_xml(note_file, "C:/Users/justin/Documents/mynote6.xml", options = "format")
+```
+
+
+
+
+![Final XML](https://github.com/justinherman42/Data_Science_Projects/blob/master/R/Build_Custom_Poker_Statistics_Software/Images_folder/final_product.PNG)
+
+
+
+
+
+
+
