@@ -4,6 +4,7 @@
 + The notebook goes through my evolution in understanding of how to interact with the Times website
 + Graphs and summary statistics are provided on the metadata yielded from webscrape
 
+# Please see attached link [here](http://rpubs.com/justin_herman_42/430032) for executed script
 # Conclusion
 + I really wanted to go further with this, and may do so at a later time.  
     + My idea here was to produce some sort of modern day Manufactoring consent type analysis of the NY Times
