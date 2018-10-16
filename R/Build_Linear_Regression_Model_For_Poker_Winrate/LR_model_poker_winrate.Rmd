@@ -71,7 +71,29 @@ library(knitr)
 # library(data.table)
 library(psych)
 library(stats)
-pw <- "password"
+
+# shiny function to get and store PW
+get_password <- function() {
+ ui <- miniPage(
+   gadgetTitleBar("Please enter your password"),
+   miniContentPanel(
+     passwordInput("password", "")
+   )
+ )
+
+ server <- function(input, output) {
+   observeEvent(input$done, {
+     stopApp(input$password)
+   })
+   observeEvent(input$cancel, {
+     stopApp(stop("No password.", call. = FALSE))
+   })
+ }
+
+ runGadget(ui, server, viewer = dialogViewer("Password", height = 200))
+}
+
+pw <- get_password()
 drv <- dbDriver("PostgreSQL")
 con <- dbConnect(drv, dbname = "2017_DB", host = "localhost", port = 5432, 
     user = "postgres", password = pw)
