@@ -1,0 +1,230 @@
+---
+title: "Accessing NYT API for analysis of the term domestic terrorist" 
+author: "Justin Herman"
+date: "March 27, 2018"
+output:
+  html_document:
+    theme: "simplex"
+    highlight: 'pygments'
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE,warning=FALSE,warnings=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, message=FALSE,warning=FALSE,warnings=FALSE}
+rm(list=ls())
+#install.packages("devtools")
+#devtools::install_github("mkearney/nytimes")
+library(data.table)
+library(plyr)
+library(tidyverse)
+library(splitstackshape)
+library(magrittr)
+library(rlang)
+library(gridExtra)
+library(knitr)
+library(kableExtra)
+library(data.table)
+library(ggplot2)
+library(RCurl)
+library(httr)
+library(rtimes)
+library(jsonlite)
+library(tidyverse)
+```
+
+
+# Introduction
+
++ I found a really useful guide to accessing NYT API here [http://www.storybench.org/working-with-the-new-york-times-api-in-r/](http://www.storybench.org/working-with-the-new-york-times-api-in-r/)
+
+## Setup a Times Key(Shiny App)
+
+```{r, echo= FALSE,warning=FALSE}
+library(miniUI)
+library(shiny)
+get_password <- function()
+{
+    ui <- miniPage(gadgetTitleBar("Please enter your password"), miniContentPanel(passwordInput("password", 
+        "")))
+    
+    server <- function(input, output)
+    {
+        observeEvent(input$done, {
+            stopApp(input$password)
+        })
+        observeEvent(input$cancel, {
+            stopApp(stop("No password.", call. = FALSE))
+        })
+    }
+    
+    runGadget(ui, server, viewer = dialogViewer("Password", height = 200))
+}
+pw <- get_password()
+NYTIMES_KEY <- pw
+```
+
+## Initial Attempt 
++ This attempt was a failure in that it returned too many results
+
+```{r}
+# Create query term
+term <- "domestic+terrorist"
+begin_date <- "20000420"
+end_date <- "20160428"
+
+baseurl <- paste0("http://api.nytimes.com/svc/search/v2/articlesearch.json?fq=body=", 
+    term, "&begin_date=", begin_date, "&end_date=", end_date, "&facet_filter=true&api-key=", 
+    NYTIMES_KEY, sep = "")
+initialQuery <- RJSONIO::fromJSON(baseurl)
+initialQuery[[3]][2]
+Sys.sleep(1)
+```
+
++ 200k+ repsonses, this is not the correct way to search for the term 
+
+## Second Attempt 
++ Correctly identify how to search multiple word phrases
++ Get request gives me an idea of my query limits
+
+```{r}
+# Another way
+new_search <- "\"domestic terrorist\""
+articleSearchURL <- "http://api.nytimes.com/svc/search/v2/articlesearch.json"
+APIquery <- list(`api-key` = NYTIMES_KEY, q = new_search)
+rawArticle <- GET(articleSearchURL, query = APIquery)
+rawArticle[[3]]
+Sys.sleep(1)
+```
+
+## Initial API Request With Correct Search Terms
++ Encode the url becuase the term had a space
+
+```{r}
+orig_url <- "http://api.nytimes.com/svc/search/v2/articlesearch.json?api-key="
+term <- "\"domestic terrorist\""
+baseurl <- paste0(orig_url, NYTIMES_KEY, "&q=", term, "&facet_filter=true", 
+    sep = "")
+baseurl <- URLencode(baseurl)
+initialQuery <- RJSONIO::fromJSON(baseurl)
+Sys.sleep(1)
+initialQuery[[3]][2]
+total_meta_hits <- initialQuery[[3]][2]
+total_meta_hits <- round(min(50,total_meta_hits$meta[[1]]/10 -1),0)
+total_meta_hits
+```
+
++ This worked and my query shows me that there are 350+ repsonses
+    + total_meta_hits variable created, as metahits updates frequently(capped at 500) 
++ In the next section I will loop through an api request
+
+## Loop Through All Metadata
+
++ I took the loop from the walk through I posted earlier
+
+```{r}
+domestic_terroirst <- list()
+for (i in 0:total_meta_hits)
+{
+    nytSearch <-  jsonlite::fromJSON(paste0(baseurl, "&page=", i), flatten = TRUE) %>% 
+        data.frame()
+    domestic_terroirst[[i + 1]] <- nytSearch
+    Sys.sleep(1)
+}
+```
+
+## Build DF From Loop
++ Display column names 
+
+```{r}
+domestic_terroirst_df <- rbind_pages(domestic_terroirst)
+rm(domestic_terroirst)
+```
+
+# Exploratory Analysis
+
++ I love this chooseone function
+    + lapply, for summary analysis
+
+```{r}
+chooseOne <- function(question)
+{
+    domestic_terroirst_df %>% 
+        filter(!UQ(sym(question)) == "") %>% 
+        dplyr::group_by_(question) %>% 
+        dplyr::summarise(count = n()) %>% 
+        dplyr::mutate(percent = (count/sum(count))* 100) %>% 
+        dplyr::arrange(desc(count))
+}
+my_names <- colnames(domestic_terroirst_df)
+the_names <- my_names[(c(2, 3, 10, 11, 12, 15, 19, 20, 25))]
+lapply(the_names, function(x) chooseOne(x))
+```
+
+
+## Create Visual Displays
+
+```{r}
+domestic_terroirst_df %>% 
+    filter(!UQ(sym("response.docs.section_name")) == "") %>% 
+    dplyr::group_by(response.docs.section_name) %>% 
+    dplyr::summarize(count = n()) %>% 
+    dplyr::mutate(percent = (count/sum(count)) * 100) %>% 
+    ggplot() + geom_bar(aes(y = percent, x = reorder(response.docs.section_name, count), 
+    fill = response.docs.section_name),stat = "identity") + 
+    coord_flip() + theme(legend.position = "none")
+
+domestic_terroirst_df %>% 
+    dplyr::group_by(response.docs.type_of_material) %>% 
+    dplyr::summarize(count = n()) %>% 
+    dplyr::mutate(percent = (count/sum(count)) * 100) %>% 
+    ggplot() + geom_bar(aes(y = percent, x = reorder(response.docs.type_of_material, count),
+                        fill = response.docs.type_of_material), stat = "identity") + 
+                        coord_flip() + theme(legend.position = "none")
+```
+
+## Author Article Counts 
+
+```{r}
+chooseOne('response.docs.byline.original')
+```
+
+## Timeseries Results Graph
+
+```{r}
+domestic_terroirst_df$response.docs.pub_date <- as.Date(gsub("T.*", "", 
+    domestic_terroirst_df$response.docs.pub_date))
+
+ggplot(domestic_terroirst_df, aes(x = response.docs.pub_date)) + stat_bin(aes(y = cumsum(..count..)), 
+    binwidth = 1)
+```
+
+## Specified Search Example 
++ Just a test run
+
+```{r}
+
+cleaner_domestic_terroirst <- list()
+fields <- c("headline", "web_url", "abstract", "news_desk", "word_count", "pub_date")
+orig_url <- "http://api.nytimes.com/svc/search/v2/articlesearch.json?api-key="
+term <- "\"domestic terrorist\""
+baseurl <- paste0(orig_url, NYTIMES_KEY, "&q=", term, "&fl=", paste(fields, 
+    collapse = ","), sep = "")
+## Test Run
+baseurl <- URLencode(baseurl)
+df_2 <- fromJSON(baseurl, flatten = TRUE)
+my_df <- df_2$response$docs
+dim(my_df)
+my_df
+```
+
+
+## Conclusion
+
++ I really wanted to go further with this, and may do so at a later time.  
+    + My idea here was to produce some sort of modern day Manufactoring consent type analysis of the NY Times
+    + Combining this data with sentiment analysis, could lead to some understanding of the bias presented in one of the most respected newspapers in the world
