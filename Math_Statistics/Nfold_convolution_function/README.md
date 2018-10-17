@@ -1,0 +1,4 @@
+# Build_Nfold_convolution_function
++ Function prints a simulation of probability distribution
++ Function returns actual probability distribution
++ Function is then Tested on homework solution sets
