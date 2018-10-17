@@ -38,7 +38,7 @@ s_2
 
 ## Sanity and Visual Check
 ![equation](https://latex.codecogs.com/gif.latex?S_2(2)=&space;\frac{1}{6}*\frac{1}{6})  
-![equation](https://latex.codecogs.com/gif.latex?S_2(2)=&space;\frac{1}{6}*\frac{1}{6})
+![equation](https://latex.codecogs.com/gif.latex?S_2(12)=&space;\frac{1}{6}*\frac{1}{6})
 
 ```{r}
 ## sanity check sum 2, 12 should equal 1/6*1/6
