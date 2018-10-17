@@ -37,8 +37,8 @@ s_2
 ```
 
 ## Sanity and Visual Check
-+ $S_2(2)= \frac{1}{6}*\frac{1}{6}$
-+ $S_2(12)= \frac{1}{6}*\frac{1}{6}$
+![equation](https://latex.codecogs.com/gif.latex?S_2(2)=&space;\frac{1}{6}*\frac{1}{6})  
+![equation](https://latex.codecogs.com/gif.latex?S_2(2)=&space;\frac{1}{6}*\frac{1}{6})
 
 ```{r}
 ## sanity check sum 2, 12 should equal 1/6*1/6
@@ -55,8 +55,7 @@ hist(s_2_dice)
 ```
 
 ## Build s3
-$S_3= x_3+s_2$
-
+![equation](https://latex.codecogs.com/gif.latex?$S_3=&space;x_3&plus;s_2$)
 ```{r}
 # s3
 s_3 <- convolve(s_2,rev(x_2), type = "open")
