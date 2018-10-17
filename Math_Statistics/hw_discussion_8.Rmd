@@ -1,0 +1,266 @@
+---
+title: "Untitled"
+author: "Justin Herman"
+date: "October 17, 2018"
+output:
+  html_document:
+    theme: "simplex"
+    highlight: 'pygments'
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r,,message=FALSE,warning=FALSE}
+library(tidyverse)
+library(dplyr)
+library(knitr)
+```
+
+# Build A nfoldconvolution Function
+
++ Being that the dice example is easier to visualize, I use it to figure out how to program a Nfoldconvolution function 
++ Our space $S_2=X_1+X_2$
+
+```{r}
+# X1
+x_1 <- c(rep(1/6, 6))
+# x2
+x_2 <- c(rep(1/6, 6))
+# S2=x1+x2
+s_2 <- convolve(x_1, x_2, type = "open")
+s_2
+```
+
+## Sanity and Visual Check
++ $S_2(2)= \frac{1}{6}*\frac{1}{6}$
++ $S_2(12)= \frac{1}{6}*\frac{1}{6}$
+
+```{r}
+## sanity check sum 2, 12 should equal 1/6*1/6
+dice_add_to_2 <- s_2[1]
+dice_add_to_12 <- s_2[11]
+round(dice_add_to_2, 2) == round(dice_add_to_12, 2)
+round(1/36, 2) == round(dice_add_to_2, 2)
+
+
+## visual check
+s_2_dice <- sample(2:12, 50000, s_2, replace = TRUE)
+hist(s_2_dice)
+
+```
+
+## Build s3
+$S_3= x_3+s_2$
+
+```{r}
+# s3
+s_3 <- convolve(s_2,rev(x_2), type = "open")
+hist(sample(3:18, 50000, s_3, replace = TRUE))
+```
+
+## Build n_fold_convolution 
++ Function only works with discrete continuous integers as data 
+    + Dispalys a simulation of results
+    + Calculates and returns actual probability distribution
+
+```{r}
+my_n_fold_convolution <- function(s, prob, labels, start, stop)
+{
+    fold <- 2
+    s_distribution <- prob
+    while (fold <= s)
+    {
+        s_distribution <- convolve(prob, rev(s_distribution), conj = TRUE, 
+            type = "open")
+        fold <- fold + 1
+    }
+    labels_start <- s * start
+    label_end <- s * stop
+    my_labels <- labels_start:label_end
+    hist(sample(my_labels, 2e+05, s_distribution, replace = TRUE), main = "histogram of simulation")
+    return(s_distribution)
+}
+```
+
+## Test Function
++ Tested on 2 and 3 everything seems fine 
+```{r,message=FALSE,warning=FALSE}
+dice <- 1:6
+my_s2 <- my_n_fold_convolution(2, x_2, dice, 1, 6)
+my_s3 <- my_n_fold_convolution(3, x_2, dice, 1, 6)
+kable(as_data_frame(cbind(my_s3, s3 = s_3 ,my_s2, s2 = s_2)))
+```
+
+# Problem 7.4 
+![](C:\Users\justin\Desktop\winning.png)
+
+## Solve problem
++ Amount of winnings is (1,2,3)
++ I want s(10) 
++ probability= (1/4,1/4,1/2)
++ start=1
++ end=3
+```{r}
+winnings_dist <- my_n_fold_convolution(s = 10, prob = c(1/4, 1/4, 1/2), 
+    labels = c(1, 2, 3), start = 1, stop = 3)
+winnings_dist
+```
+
+## Conclusion
++ Originally i didnt want to do this problem, and I wanted to attempt the baseball question, question 8.  
++ Let's try question 8
+
+
+# Problem 7.8    
+![](C:\Users\justin\Desktop\problem8.png)
+
+```{r}
+our_probability <- c(0.4, 0.2, 0.2, 0.1, 0.1)
+my_labels <- 0:4
+start <- 0
+end <- 4
+```
+
+## Histograms of simulations for 4,5,6,7 games 
+```{r}
+four_games <- my_n_fold_convolution(s = 4, prob = our_probability, labels = my_labels, 
+    start = 0, stop =  4)
+five_games <- my_n_fold_convolution(s = 5, prob = our_probability, labels = my_labels, 
+    start = 0, stop = 4)
+six_games <- my_n_fold_convolution(s = 6, prob = our_probability, labels = my_labels, 
+    start = 0, stop = 4)
+seven_games <- my_n_fold_convolution(s = 7 , prob = our_probability, labels = my_labels, 
+    start = 0, stop = 4)
+```
+
+## Hit Distributions For 4 game series
+```{r}
+expected_hits_fourgames <- as_data_frame(cbind(four_games, hits = start:(end * 
+    4)))
+kable(expected_hits_fourgames)
+```
+
+## Quick Sanity Check 
++ Above table shows 0 hits as .0256
+    + should be .4 **4
++ Above table shows 16 hits as .0001
+    + should be .1*4
+```{r}
+print(0.4^4)
+print(0.1^4)
+```
+
+## Hit Distributions For 5,6,7 Games
+```{r}
+# 5 games
+expected_hits_fivegames <- as_data_frame(cbind(five_games, hits = start:(end * 
+    5)))
+kable(expected_hits_fivegames)
+# 6 games
+expected_hits_sixgames <- as_data_frame(cbind(six_games, hits = start:(end * 
+    6)))
+kable(expected_hits_sixgames)
+# 7 games
+expected_hits_sevengames <- as_data_frame(cbind(seven_games, hits = start:(end * 
+    7)))
+kable(expected_hits_sevengames)
+```
+
+
+## B batting average above .400
++ To calculate the batting average above .400 we take total probability given a players 
+$\frac{hits}{ab}>.400$
+    + Below we first calculate how many hits a player needs in each series length to bat 400 and above
+    + Then we find the sum of the probability of getting that hit amount and above 
++ Answer 
+    + 4 games = 0.304
+    + 5 games = .357
+    + 6 games = .295
+    + 7 games = .246
+    + The reason for the large variety in outcomes is that our data is discrete and therefore depending on how many at bats occur, the amount of hits required to reach .400 varies.
+        + In 5 games(highest probability),8 hiss are required to reach .400, 8/20 = .400 
+        + In 7 games(lowest probability), 12 hits are required to reach .400, 12/28  = .428 
+```{r,message=FALSE,warning=FALSE}
+expected_hits_fourgames
+# calculate hits needed 4 games
+four_gamesba <- 7/16
+# filter and summarize
+expected_hits_fourgames %>% filter(hits >= 7) %>% summarize(sum(four_games))
+# calculate hits needed 5 games
+five_gamesba <- 8/20
+# filter and summarize
+expected_hits_fivegames %>% filter(hits >= 8) %>% summarize(sum(five_games))
+# calculate hits needed 6 games
+six_gamesba <- 10/24
+# filter and summarize
+expected_hits_sixgames %>% filter(hits >= 10) %>% summarize(sum(six_games))
+# calculate hits needed 7 games
+seven_gamesba <- 12/28
+# filter and summarize
+expected_hits_sevengames %>% filter(hits >= 12) %>% summarize(sum(seven_games))
+```
+
+## Long Term Batting Average
++ Long term batting average is just the mean expected value of the distribution
++ Can be solved via simulation 
+    + Assuming 165 games in a year and ten year career, we can simulate with n=1650
+        + This outcome is likely to differ from theoretical distribution considering sample size
+        + .328    
++ Strictly using distribution function, function seems to break
+    + I got rid of graph and solved programatically 
+    + expected batting average .325
+```{r,echo=FALSE}
+# Rebuild function without simulation graph
+my_n_fold_convolution <- function(s, prob, labels, start, stop)
+{
+    fold <- 2
+    s_distribution <- prob
+    while (fold <= s)
+    {
+        s_distribution <- convolve(prob, rev(s_distribution), conj = TRUE, 
+            type = "open")
+        fold <- fold + 1
+    }
+    # print(s_distribution)
+    labels_start <- s * start
+    label_end <- s * stop
+    my_labels <- labels_start:label_end
+    return(s_distribution)
+}
+```
+
+## Solve Using Simulation
+```{r}
+## simulation
+set.seed(5)
+batting_avg_longterm <- sample(0:4, 365, our_probability, replace = TRUE)
+sum(batting_avg_longterm)/(length(batting_avg_longterm) * 4)
+```
+
+
+## Solve With Distribution Function
+
+```{r}
+# Solution A
+total_career_hit_distribution <- my_n_fold_convolution(s = 1650, prob = our_probability, 
+    my_labels, 0, 4)
+my_df <- as_data_frame(cbind(total_career_hit_distribution, (0:6600)))
+## expected value of hits at .500 of distribution
+sum(my_df$total_career_hit_distribution[0:2145])
+## 2145 hits/ 6600 total ab
+2145/6600
+
+# Alternative solution
+my_cdf <- dplyr::as_data_frame(cbind(cumsum(my_df$total_career_hit_distribution), 
+    my_df$V1))
+my_cdf %>% filter(V1 > 0.5 & V1 < 0.51)
+```
+
+
+
+
