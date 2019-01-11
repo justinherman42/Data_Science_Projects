@@ -1,4 +1,4 @@
-+ In this file I take in several different csv and excel files, join them together and conduct some visual analysis. 
++ In this file I take in several different csv and excel files, join them together, and conduct some visual analysis. 
 + This was a very early project in my R development
 
 
