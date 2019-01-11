@@ -1,0 +1,428 @@
+---
+title: "general visualization and data manipulation"
+author: "Justin Herman"
+date: "January 11, 2019"
+output:
+  html_document:
+    theme: "simplex"
+    highlight: 'pygments'
+    toc: true
+    toc_float: true
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r cars, message=FALSE}
+library(tidyverse)
+library(kableExtra)
+library(knitr)
+library(stringr)
+library(readr)
+library(plyr)
+library(dplyr)
+library(data.table)
+library(readxl)
+require(xlsx)
+library(rJava)
+library(xlsx)
+
+```
+
+# Tidy dataset 1: Movies database
+
++ [link to source](https://docs.google.com/spreadsheets/d/1K_a87dxLQR91GwVcqkqZK9kjxcYDl1tbK9EX9WvC7bo/edit#gid=601448852)
+
+## Load in Data from xlsx file
++ Dataframe requires tidying
+    + Join individual movies into one movies column
+    + Separate timestamp by day and time
+        + Could perform some interesting time series analysis on the effects of time of day of review
+    + Omit NA Values
+    
+    
+```{r}
+
+movies <- read.xlsx("Movie_Ratings.xlsx",1)
+movies%<>% 
+    gather(Movies,n,3:12) %>% 
+    select(Timestamp,Name,Movies,n,Number.of.Movies.Seen) %>%   
+    separate('Timestamp',c("day","time")," ") %>% 
+    na.omit() %>% 
+    arrange(Name)
+View(movies)
+    
+movies %>% 
+    dplyr::group_by(Movies) %>% 
+    dplyr::summarise(round(mean(n),2))
+
+
+```
+
+## data Visualization
++ Display average rating by user
++Display average rating by movie
+```{r}
+
+
+movies %>%  
+    dplyr::group_by(Name) %>% 
+    dplyr::summarise(Average_Rating_by_user=round(mean(n),2)) %>% 
+    arrange(desc(Average_Rating_by_user)) %>% 
+    ggplot(., aes(x=Name , Average_Rating_by_user)) + 
+    geom_bar(aes(fill = Name), position = "dodge", stat = "identity")+
+    theme(axis.text.x=element_text(angle=90,hjust=1))+
+    coord_flip()
+
+movies %>%  
+    dplyr::group_by(Movies) %>% 
+    dplyr::summarise(Average_movie_rating=round(mean(n),2)) %>% 
+    arrange(desc(Average_movie_rating)) %>% 
+    ggplot(., aes(x=Movies , Average_movie_rating)) + 
+    geom_bar(aes(fill = Movies), position = "dodge", stat = "identity")+
+    theme(axis.text.x=element_text(angle=45,hjust=1))
+    
+
+
+
+ 
+
+```
+
+# World Bank info for Infant Mortality, Tuberculosis, and Aids
++ Binish recommended this dataset website
++ [link to source](http://apps.who.int/gho/data/node.country.country)
++ Randomly chose 4 countires with the letter `U`
++ Read in files individually/with functional
+```{r}
+
+#Manually Load in CSV
+Uganda<- read.csv("https://raw.githubusercontent.com/justinherman42/Justin-Data-607/master/tidy_data_week4/uganda.csv",na.strings=c("","NA"))
+Ukraine <- read.csv("https://raw.githubusercontent.com/justinherman42/Justin-Data-607/master/tidy_data_week4/Ukraine.csv",na.strings=c("","NA"))
+United_kingdom <- read.csv("https://raw.githubusercontent.com/justinherman42/Justin-Data-607/master/tidy_data_week4/United_Kingdom.csv",na.strings=c("","NA"))
+United_states <- read.csv("https://raw.githubusercontent.com/justinherman42/Justin-Data-607/master/tidy_data_week4/United_states.csv",na.strings=c("","NA"))
+
+
+# Functional to load csv
+files <- c("https://raw.githubusercontent.com/justinherman42/Justin-Data-607/master/tidy_data_week4/uganda.csv", "https://raw.githubusercontent.com/justinherman42/Justin-Data-607/master/tidy_data_week4/Ukraine.csv", "https://raw.githubusercontent.com/justinherman42/Justin-Data-607/master/tidy_data_week4/United_Kingdom.csv", "https://raw.githubusercontent.com/justinherman42/Justin-Data-607/master/tidy_data_week4/United_states.csv")
+temp = files
+myfiles <-lapply(temp,read.csv)
+```
+
+
+## Join on shared row index values(survey questions)
++ This will decrease our sample to only those questions that are answered in every dataset
+```{r,warning= FALSE, message=FALSE}
+
+merged_df<- inner_join(United_states,United_kingdom) %>% 
+    inner_join(.,Ukraine) %>% 
+    inner_join(.,Uganda)
+
+# With Functional data
+merged_df_2<- inner_join(myfiles[[1]],myfiles[[2]]) %>% 
+    inner_join(myfiles[[3]]) %>%   
+    inner_join(myfiles[[4]])
+#kable(merged_df_2[1:15,])
+```
+
+## Tidy Dataset
+```{r}
+
+getting_tidy <- merged_df[-(1),] %>% 
+    gather(United_states,Values,2:57) %>% 
+    mutate(Year=rep(unlist(lapply(2015:2002,function(x) rep(x,23))),4)) %>% 
+    spread(X, Values) 
+```    
+
+### Get rid of special characters ``]`` ``[``  ``-``   and add spacing for next pipe of tidying
++  Use pipe to Tidy Mean[min-max] columns into mean,min,max columns
+```{r}
+
+getting_tidy <-  as_data_frame(lapply(getting_tidy,function(x){ str_replace_all(x,"\\]|\\["," ")}))
+getting_tidy <-  as_data_frame(lapply(getting_tidy,function(x){ str_replace_all(x,"-","  ")}))
+
+
+
+final_df <- getting_tidy %>% 
+    separate(.,`Incidence of tuberculosis (per 100 000 population per year)`,into=c('Mean_Incidence_Tuberculosis_100,000','Min_Tuberculosis',"Max_Tuberculosis")) %>% 
+    separate(.,`Antiretroviral therapy coverage among people with HIV infection eligible for ART according to 2010 guidelines (%)`,into=c('Mean_Antiretroviral_coverage','Min_Antiretroviral_coverage','Max_Antiretroviral_coverage')) %>% 
+    separate(.,`Infant mortality rate (probability of dying between birth and age 1 per 1000 live births)`,into=c('Mean_Infant mortality_Rate/1000','Min_Infant_Mortality rate',"Max_Infant_Mortality_Rate"),sep= "  ") %>% 
+    separate(.,`Under-five mortality rate (probability of dying by age 5 per 1000 live births)`,into=c('Mean_Under-five_Mortality_Rate/1000','Min_Under-five_Mortality_Rate',"Max_Under-five_Mortality_Rate"), sep="  ") %>% 
+    separate(.,`Tuberculosis treatment coverage`,into=c('Mean_Tuberculosis_Coverage','Min_Tuberculosis_Coverage',"Max_Tuberculosis_Coverage"))
+
+
+```
+
+
+###  More piping
++ First column needs to be renamed to country column 
++ Eliminate the .integers after the values in country column
++ Trim df
++ Convert columns to numeric for analysis
+
+```{r}
+final_df %<>% 
+    plyr::rename(.,c('United_states'= 'Country')) %>% 
+    mutate(Country=rep(c("Uganda","Ukraine","United_Kingdom","United_States"),each=14)) %>% 
+    select(colnames(.)[c(1,2,10,11,12,13,14,15,16,17,21,22,23,30,31,32,33,34,35)]) %>% 
+    arrange(.,`Country`)  
+
+final_df[] <- lapply(final_df,function(x){ str_trim(x)}) 
+final_df[3:19] <- lapply(final_df[3:19],function(x) as.numeric(as.character(x))) 
+final_df <- as_data_frame(final_df)
+kable(final_df)
+```  
+
+## Visual exploratory analysis of Infant Mortality
+```{r}
+final_df %>%
+    mutate(GNP=as.numeric(`Gross national income per capita (PPP int. $)`)) %>% 
+    dplyr::group_by(Country) %>% 
+    ggplot(., aes(x=Year ,y=GNP))+ 
+    geom_bar(aes(fill = Country), position = "dodge", stat = "identity")+
+    theme(axis.text.x=element_text(angle=45,hjust=1))
+    
+final_df %>%
+    dplyr::group_by(Country) %>% 
+    ggplot(., aes(x=Year ,y=`Mean_Infant mortality_Rate/1000`))+ 
+    geom_bar(aes(fill = Country), position = "dodge", stat = "identity")+
+    theme(axis.text.x=element_text(angle=45,hjust=1))
+
+final_df_display <- final_df %>% 
+    arrange(Country,Year) %>% 
+    select(.,Country,`Mean_Infant mortality_Rate/1000`)
+
+```
+
++ Uganda seems to have reduced it's infant mortality rate by over 50%
+
+## Numerical display of Infant Mortality
+```{r}
+## Numerical display     
+kable(final_df_display)
+```
+
+## Display of infant Mortality with the 3 samples closer in scale
+
+```{r}
+final_df %>%
+    dplyr::filter(., Country %in% c("United_Kingdom", "Ukraine","United_States")) %>% 
+    dplyr::group_by(Country) %>% 
+    ggplot(., aes(x=Year ,y=`Mean_Infant mortality_Rate/1000`))+ 
+    geom_bar(aes(fill = Country), position = "dodge", stat = "identity")+
+    theme(axis.text.x=element_text(angle=45,hjust=1))
+
+```
+
++ Ukraine has seen a reduction of around 40%
++ US and UK have also seen a reduction, however UK seems to have a more substantial reduction(30%) over the US reduction of (17%)
+
+
+## Look at Tuberculosis
+
+```{r}
+
+final_df %>%
+    dplyr::filter(., Country %in% c("Uganda", "Ukraine","United_Kingdom","United_States")) %>% 
+    dplyr::group_by(Country) %>% 
+    ggplot(., aes(x=Year ,y=`Mean_Incidence_Tuberculosis_100,000`))+ 
+    geom_bar(aes(fill = Country), position = "dodge", stat = "identity")+
+    theme(axis.text.x=element_text(angle=45,hjust=1))
+```
+
++ Uganda seems to have seen some moderate improvement over the past 13 years in tuberculosis, but the rate is relatively high still
++ Ukraine seems to have has a similar improvement
+
+## Look at Tuberculosis in Heavily industrialized nations( UK, US)
+
+```{r}
+final_df %>%
+    dplyr::filter(., Country %in% c("United_Kingdom","United_States")) %>% 
+    dplyr::group_by(Country) %>% 
+    ggplot(., aes(x=Year ,y=`Mean_Incidence_Tuberculosis_100,000`))+ 
+    geom_bar(aes(fill = Country), position = "dodge", stat = "identity")+
+    theme(axis.text.x=element_text(angle=45,hjust=1))
+```
+
++ England appears to have made some moderate improvement in the past several years
++ Tuberculosis in the United states is almost non-existant and it appears it is decreasing
+
+
+
+
+# Third Dataset- Gapminder
++ Burcu recommended the Gapminder data website
++ [link to source](https://www.gapminder.org/data/)
++ mix of WHO datasets and 
+
+## War or food?
++ Are nations dealing with war more food insecure?
++ How do state expenditures differ on war versus food?
+
+## Load in third dataset 
++ file 1 iis a file with death rates out of 100k from war  [link to source](https://docs.google.com/spreadsheets/d/15kseoFj-w39TvMl_Ije-C2TZy-DKYyECsF-uGdec0z8/pub)
++ file 2 is a measurement of daily calories consumption    [link to source](https://docs.google.com/spreadsheets/d/14G6CjF6NblTGf6kkQclpXp3XZ3D4Nkw1I92DB4fOjXo/pub)
++file 3 is GDP War expenditure %                           [link to source](https://docs.google.com/spreadsheets/d/1HXH3ncdQLFpOXVNdC2nkPCSGz_perkfPcBeU1e2HF24/pub)
++ file 4 is GDP Agricultural Expenditure                   [link to source](https://docs.google.com/spreadsheets/d/16JAXDjaKcyaEfd6sO_pRC892NG8VAk6moyw3Gl50-Ys/pub)
+
+```{r}
+delete.na <- function(DF, n=0) {
+  DF[rowSums(is.na(DF)) <= n,]
+}
+
+
+War<- read.xlsx("War.xlsx", header=TRUE,1,)
+food_security <- read.xlsx("indicator food_consumption.xlsx", header=TRUE,1,)
+Agricultural_expend<- read.xlsx("Agricultural_expenditure.xlsx", header=TRUE,1,)
+military_expend <- read.xlsx("military_expenditure.xlsx", header=TRUE,1,)
+
+dim(food_security)
+dim(military_expend)
+dim(Agricultural_expend)
+dim(War)
+```
+
+## DF Preparation 
++ Eliminate rows with substantial NA's
++ Convert columns to numeric 
++ Rename columns to acoid duplication of Column name sfor eventual Join
++ Filter df's for common shared year range of 1988-2007
+```{r}
+military_expend <- delete.na(military_expend, 20)
+Agricultural_expend <- delete.na(Agricultural_expend, 15)
+food_security <- delete.na(food_security, 20)
+War <- as_data_frame(lapply(War, function(x) if(is.numeric(x)) round(x,2) else x))
+military_expend <- as_data_frame(lapply(military_expend, function(x) if(is.numeric(x)) round(x,2) else x))
+War <- War[2:4]
+colnames(War) <- c("Country", 'war_2002','war_2004')
+colnames(military_expend) <-  c("Country",paste(1988:2011,'Military_expend'))
+colnames(food_security) <- c("Country",paste (1961:2007,"food_security"))
+colnames(Agricultural_expend) <- c("Country",paste(1961:2011,"Agricultural_expend"))
+Agricultural_expend <- Agricultural_expend[c(1,29:48)]
+food_security <- food_security[c(1,29:48)]
+military_expend <- military_expend[c(1:21)]
+
+
+merged_df_3<- inner_join(War,military_expend) %>%
+    inner_join(.,food_security) %>% 
+    inner_join(.,Agricultural_expend)  
+dim(merged_df_3)
+
+```
+
+
+## Exploratory Analysis of Death from wars data 
++ explore war death df
+```{r}
+merged_df_3$war_2002-merged_df_3$war_2004
+
+
+merged_df_3[1:3] %>% 
+    mutate(.,average_deaths=(war_2002+war_2004)/2) %>% 
+    arrange(.,average_deaths) %>%  
+    kable(.)
+ 
+```
+
+## Create bins of death from wars to categorize Nations 
++ Add average deaths from war column
++ Categorize deaths from war by levels
+    + no deaths, low_deaths, moderate_deaths, high_deaths
+
+```{r}
+food_war <- merged_df_3 %>% 
+    gather(Wars,Values,4:63) %>% 
+    separate(.,Wars,into= c("Year", "Type"),sep=" ") %>% 
+    spread(Type,Values) %>% 
+    mutate(.,average_deaths=(war_2002+war_2004)/2) %>% 
+    select(-c(war_2002,war_2004)) %>% 
+    mutate(Deaths_from_war=cut(average_deaths, breaks=c(-1,0,1,10,Inf), labels= c("no_deaths", "low_deaths", "moderate_deaths", "high_deaths")))
+   
+    
+
+kable(food_war[1:50,])
+```
+
+## Summary Explorations
+```{r}
+# 
+food_war <-food_war %>%
+    dplyr::group_by(Deaths_from_war,Year)
+agricultural_spending_by_year <- food_war %>%
+    dplyr::summarize(agri_exp_mean=mean(Agricultural_expend, na.rm = TRUE))
+#food_war %>%
+   # dplyr::summarize(mean(Military_expend, na.rm = TRUE))
+food_security_by_year <- food_war %>%
+    dplyr::summarize(daily_calories=mean(food_security, na.rm = TRUE))
+
+food_war <-food_war %>% 
+     dplyr::group_by(Deaths_from_war)
+# food_war %>% 
+#     dplyr::summarize(mean(Agricultural_expend, na.rm = TRUE))
+# food_war %>% 
+#     dplyr::summarize(mean(Military_expend, na.rm = TRUE))
+# food_war %>% 
+#     dplyr::summarize(mean(food_security, na.rm = TRUE))
+# 
+# food_war    
+```
+
+## Observations
++ My categories aren't of even sizes so my clustering could effect my observations and lead to large impact from outliers
++ I don't have an overall GDP per country, this could make a big difference in relative % GDP expenditures
+
++Tentative Observations
+    + Areas with the most death from wars seem to spend more of their GDP on agricultural expenditures
+    + Areas with the most deaths don't spend much on military expenditures, and low death areas actually spend more than high death areas 
+    + High and moderate death areas are significantly more food insecure. Calorie consumption is about 30% lower in these areas
+
+
+
+
+## Data Visualization 
+```{r}
+food_security_by_year %>% 
+    ggplot(.,aes(x=Year,y=daily_calories))+
+    geom_bar(aes(fill = Deaths_from_war), position = "dodge", stat = "identity")+
+    theme(axis.text.x=element_text(angle=45,hjust=1))
+
+```
+
++ Caloric consumption seems rather Flat in all the categories over the last three decades
+
+
+```{r}
+agricultural_spending_by_year %>% 
+    ggplot(.,aes(x=Year,y=agri_exp_mean))+
+    geom_bar(aes(fill = Deaths_from_war), position = "dodge", stat = "identity")+
+    theme(axis.text.x=element_text(angle=45,hjust=1))
+```
+
++ As a percent of GDP agricultural expenditure has decreased across all categories over last three decades
++ Area's with higher casualties of war seem to have made large cuts to expenditures
+
+```{r}
+food_war %>% 
+    ggplot(.,aes(x=Agricultural_expend,y=food_security,shape=Deaths_from_war,color=Deaths_from_war))+
+    geom_point()
+food_war %>% 
+    filter(.,Military_expend <20) %>% 
+    ggplot(.,aes(x=Military_expend,y=food_security,shape=Deaths_from_war,color=Deaths_from_war))+
+    geom_point()
+```
+
+
+## The  Scatter plots are very Interesting 
++ A handful of outliers were removed for better visualization 
+### Graph 1 Agricultural exp vs Food Security
++ Two Clear Clusters develop in the first graph
+    + Areas with high death rates seem to be the least food secure and silumtaneously spend the most on agricultural subsidy
+    + Areas with low death rates spends the least on food subsidy, and are the most food secure
+
+### Graph 2 Military exp vs Food Security 
++ Areas with low death rates seem to spend the most on the Military
+
+
