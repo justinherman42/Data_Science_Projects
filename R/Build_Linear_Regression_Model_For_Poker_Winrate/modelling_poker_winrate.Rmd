@@ -21,16 +21,16 @@ knitr::opts_chunk$set(echo = TRUE)
 <br />  
 The short explanation is that I had to access my poker Postgres database, create a customized string of poker statistics, and automate the insertion of that string into my poker sites note file.  After querying the database and creating custom stats, I realized I wanted to attempt to fit a model to the data. While I doubt anything I discover will be a breakthrough, I would think poker players could find it useful.  
     
-# Data 
+## Data 
 + Every hand I play in poker is tracked in text format.  It is then converted behind the scenes by software into statistics describing player actions. How often someone takes an action as well as the opportunity to take that action are recorded.  This  allows me to create percentages of actions, represented as poker statistics.  These stats are stored inside a Postgres database.  For this project I am accessing that db.  
 <br />
 The cases in this study are the players in the database.  Our target variable is BB/100(win rate).  The independent variables are quantitative (vpip, pfr, wwsf, threebet) and qualitative (vpip-pfr split into a qualitative grouping of wide and narrow gap).  See "explanation of stats" section below, taken from data 607 project, to understand what these variables represent.  This is an observational study. The population of interest is online poker players.  My data comes from multiple sites I have played on in past couple years, therefore it is the global online poker player population.  
 
-# Generalizability 
+## Generalizability 
 + Generalizability from my stats is a difficult task.  Most of my stats come from tables I play at.  Tables aren't chosen at random.  I use careful table selection to select tables where worse players play. This likely biases the player pool. Playing style and strategy at different stakes can lead to different results.  It's complicated, but poker is about capitalizing on mistakes. Different types of mistakes are likely made at different levels.  For instance, when playing a free hand of poker people play much differently than they would if they had to invest substantial money. Perhaps if the population is narrowly defined as low to mid stakes online No Limit Holdem, some of the predictions can be generalized to the population. 
 
 
-# Explanation of Stats
+## Explanation of Stats
 + As this is the only poker technical area in this project, I provide a brief explanation of some poker stats. In Texas Holdem players are all given two cards and are presented with a betting decision based on only their individual cards. From there they are presented with decisions on what to do as 5 community cards come out over three more rounds of betting.  There are thousands of combinations of hands and hundreds of stats to choose from, but the stats I chose are the following: 
     + VPIP = How often someone calls their hand `Or` raises/ total hands played
         + Ideal range for this stat is from (22-28)
@@ -44,14 +44,14 @@ The cases in this study are the players in the database.  Our target variable is
         + Typically any win rate above 4/bb 100 is considered a solid winning player
         + This stat can be both positive and negative, negative represents losing players
 
-# Big Picture Overview
+## Big Picture Overview
 
 + Query my poker Postgres database and create customized player statistics
 + Explore these statistics and test to see if assumptions for inference are met
 + Use these statistics to run a multiple linear regression model to try and predict a player’s winrate
 
 
-# Setup Access To Postgres, Load Libraries
+#### Setup Access To Postgres, Load Libraries
 ```{r,echo=FALSE,message=FALSE,warning=FALSE}
 rm(list = ls())
 library(formatR)
@@ -73,9 +73,9 @@ con <- dbConnect(drv, dbname = "2017_DB", host = "localhost", port = 5432,
 ```
 
 
-## Test connection  
+#### Test connection  
 
-```{r,echo=TRUE}
+```{r,echo=FALSE}
 tryCatch({
     drv <- dbDriver("PostgreSQL")
     print("Connecting to database")
@@ -87,16 +87,16 @@ tryCatch({
 })
 ```
 
-# Explore Postgres DB
-```{r}
+
+```{r,echo= FALSE}
 # query 6 has sn's
 query_6 <- dbGetQuery(conn, "SELECT * FROM players")
 # query 7 has stats
 query_7 <- dbGetQuery(conn, "SELECT * FROM compiledplayerresults limit 1000000")
 ```
 
-## Filter For Desired Columns 
-```{r}
+#### Filter For Desired Columns 
+```{r,echo=FALSE}
 # Combine query 6 and 7 A
 all_players <- query_6 %>% 
     select(., c(playername, player_id, cashhands))
@@ -128,11 +128,10 @@ columns_for_analysis <- c("gametype_id", "player_id", "totalhands", "totalbbswon
 
 ```
 
-## Create Final DF
-+ Filter by desired stats
-+ Group_by to aggregate by player
-+ Build desired stats 
-```{r}
+#### Example of player with stats
+
+
+```{r,echo=FALSE}
 
 predictors <- c("vpip", "pfr", "threebet", "bb_per_100", "wwsf")
 indexes <- c((1:31), 65)
@@ -220,14 +219,14 @@ for (i in seq_along(db_names)){
 
 
 
-# Observations 
+## Observations 
 
-## Closer Look At Dataframe With No Hands Played Filter 
+### Closer Look At Dataframe With No Hands Played Filter 
 + Looking at the no hands filtered db, the distributions are all over the place.  It is heavily zero inflated 
     + WWSF- seems to have alot of 100 and 0 frequency scores.  This makes sense as nearly 23k players have played less than 50 hands. The sample size effectively prevents the data set from displaying as a true continuous variable.  
 + Let's take a closer look at what the under 50 hands played distributions look like below
 
-## Under 50 Hands
+### Under 50 Hands
 ```{r,echo= FALSE,warning=FALSE,message=FALSE}
 under_50_hands <- all_players_finished_db %>% 
     filter(., total_hands < 50)
@@ -264,7 +263,7 @@ kable(paste("these 3 values(0,50,100) make up ", round((4462 + 2618 + 1897)/2318
     +  Increase my filter by hand requirement to allow for the stats to become continuous. 
 +  Normality of my input variables isn't a requirement,however, I want to monitor how the hand filter effects the distributions
 
-## Comparing 50 and 100 Hand Filters With Describe
+### Comparing 50 and 100 Hand Filters With Describe
 + The over 50 and over 100 hands Dataframes are displayed together above in figure 2
     + Much more normalized distribution across the board of predictor stats
         + WWSF has normalized and  the variables are likely continuous 
@@ -286,7 +285,7 @@ rownames(df_describe_50_hands) <- rownames(describe_over_50_hands)
 kable(df_describe_50_hands, caption = "Figure 4 - Over 50 hands")
 # Build describe >100 hands played db
 describe_over_100_hands <- describe(over_100_hands)
-describe_over_100_hands <- describe_over_100_hands[predictors, ]
+#describe_over_100_hands <- describe_over_100_hands[predictors, ]
 df_describe_100_hands <- as_data_frame(lapply(describe_over_100_hands, 
     function(x)
     {
@@ -297,17 +296,19 @@ colnames(df_describe_100_hands) <- colnames(describe_over_100_hands)
 rownames(df_describe_100_hands) <- rownames(describe_over_100_hands)
 # Display
 kable(df_describe_100_hands, caption = "Figure 5 - Over 100")
+
+
 ```
  
      
 + The stats seem to fit each other very well
 
-## Run Describe Function Over Other Filtered DF's 
+### Run Describe Function Over Other Filtered DF's 
  
 ```{r, echo=FALSE}
 # Build over 500 played DB
 describe_over_500_hands <- describe(over_500_hands)
-describe_over_500_hands <- describe_over_500_hands[predictors, ]
+#describe_over_500_hands <- describe_over_500_hands[predictors, ]
 df_describe_500_hands <- as_data_frame(lapply(describe_over_500_hands, 
     function(x)
     {
@@ -320,7 +321,7 @@ kable(df_describe_500_hands, caption = "Figure 6 - Over 500")
 
 # Build over 1000 hands played db 
 describe_over_1000_hands <- describe(over_1000_hands)
-describe_over_1000_hands <- describe_over_1000_hands[predictors, ]
+#describe_over_1000_hands <- describe_over_1000_hands[predictors, ]
 df_describe_1000_hands <- as_data_frame(lapply(describe_over_1000_hands, 
     function(x)
     {
@@ -333,7 +334,7 @@ kable(df_describe_1000_hands, caption = "Figure 7 - Over 1000")
 
 # Build over 2500 hands played db
 describe_over_2500_hands <- describe(over_2500_hands)
-describe_over_2500_hands <- describe_over_2500_hands[predictors, ]
+#describe_over_2500_hands <- describe_over_2500_hands[predictors, ]
 df_describe_2500_hands <- as_data_frame(lapply(describe_over_2500_hands, 
     function(x)
     {
@@ -348,7 +349,7 @@ kable(df_describe_2500_hands, caption = "Figure 8 - Over 2500")
  
  
  
-## Run Some Normality QQ Plots 
+### Run Some Normality QQ Plots 
  
 ```{r,echo= FALSE,warning=FALSE,message=FALSE}
 
@@ -374,17 +375,17 @@ mapply(qqnorm, over_2500_hands[, predictors], main = colnames(over_2500_hands[,
     predictors]), xlab = "Figure 13 - Over2500 hands")
 ```
 
-## Summary Statistics Meaning
+### Summary Statistics Meaning
 + While I ran descriptive statistics over the entire dataset, the main area of concern is the dependent variable, that variable is BB/100
 +  QQplots of BB/100 are not very comforting in any of the Dataframes.  There appears to be many samples that fall outside  2,3,4 SD from the mean
 +  Histograms also seem to have large tails and don't appear normal
 + With this in mind and with this being a elementary level analysis, I will proceed and attempt to run some linear models 
 
 
-# Attempt to build Linear Models
+# Modeling
 + Each model is run
     + Residual plots are graphed(although largely ignored until model is tuned)
-    + Summary and Anova results are displayed
+    + Summary results are displayed
 
 ## Attempt 1
 + Filter for over 2500 hands
@@ -429,7 +430,7 @@ fit_1 <- lm(y ~ vpip_pfr + VPIP + THREE_BET + WWSF + PFR)
 layout(matrix(c(1, 2, 3, 4), 2, 2))
 plot(fit_1)
 summary(fit_1)
-anova(fit_1)
+
 ```
 
 ### Summary of Fit_1
@@ -437,58 +438,51 @@ anova(fit_1)
 + WWSF also appears to not reach significance
     + Remove WWSF and proceed from there
 
-## Fit_2
-
-+ Removes WWSF
+#### Removes WWSF
     
 ```{r}
 fit_2 <- lm(y ~ vpip_pfr + VPIP + THREE_BET + PFR)
-
 layout(matrix(c(1, 2, 3, 4), 2, 2))
 plot(fit_2)
 summary(fit_2)
-anova(fit_2)
 ```
 
-### Summary of Fit 2
+#### Summary of new_fit
  +  Model still shows that  categorical data is likely sharing colinearity with vpip and pfr, which makes sense.
     + Look at the correlations of the inputs 
         + Add vpip_pfr numeric column
 
-## Correlation Plot
+#### Correlation Plot
 ```{r}
 library(corrplot)
 # Add vpip-pfr numerical vector
 corr_plot_db <- as_data_frame(cbind(over_2500_hands, numerical_vpip_pfr))
 # Plot correlations
-
 corrplot(cor(corr_plot_db[, -6]))
 ```
  
  
-### Summary of Correlation Plot
+#### Summary of Correlation Plot
  + As I Expected numerical vpip_pfr heavily correlates with vpip and pfr, it's also largely negatively correlated with the win rate statistic(bb_per_100)
- + Remove vpip( has the highest correlation with vpip_pfr)
- 
-## Fit_3
+
+####  Remove VPIP
++ has the highest correlation with vpip_pfr
  
 ```{r}
 fit_3 <- lm(y ~ vpip_pfr + THREE_BET + PFR)
-
 layout(matrix(c(1, 2, 3, 4), 2, 2))
 plot(fit_3)
 my_fit <- summary(fit_3)
-anova(fit_3)
 ```
  
-### Summary of Fit 3
+#### Summary of new_fit
 
 + These results are interesting and I believe they are getting much closer
 + Just for refresher, below are the summary statistics on this Dataframe
 
 ```{r,echo=FALSE}
 describe_over_2500_hands <- describe(over_2500_hands)
-describe_over_2500_hands <- describe_over_2500_hands[predictors, ]
+#describe_over_2500_hands <- describe_over_2500_hands[predictors, ]
 df_describe_2500_hands <- as_data_frame(lapply(describe_over_2500_hands, 
     function(x)
     {
@@ -509,7 +503,7 @@ kable(df_describe_2500_hands, caption = "Figure 8 - Over 2500")
 +  Residuals show a large tail in QQ plot, and several outliers
     + I don't believe outliers can be addressed as they are real samples 
 
-### Compare Fit_3 to my winrate
+#### Compare new_fit to my winrate
 ```{r}
 my_stats <- all_players_finished_db %>% filter(playername == "RileyFreeman") %>% 
     select(., predictors)
@@ -520,32 +514,12 @@ paste("my actual win rate is", my_stats$bb_per_100, "model predicts ",
     for_comparison)
 
 ```
+
 +  A problem with the model is that the relationship of 3 bet can't really be summed up in a linear way, as there are inflection points.  
     + High 3 bets and low 3 bets are bad, I will attempt to square the threebet input to see if the model works better
 
-## Fit_4
+#### Square PFR and 3 bet
 
-+ Square threebet input
-
-```{r,echo=FALSE}
-THREE_BET_2 <- THREE_BET^2
-fit_4 <- lm(y ~ vpip_pfr + THREE_BET_2 + PFR)
-# Graphs for analysis
-layout(matrix(c(1, 2, 3, 4), 2, 2))
-plot(fit_4)
-summary(fit_4)
-anova(fit_4)
-
-for_comparison <- fit_4$coefficients[1] + fit_4$coefficients[2] + my_stats$pfr * 
-    (fit_4$coefficients[4]) + my_stats$threebet * (fit_4$coefficients[3])
-# Print prediction versus actual
-paste("my actual win rate is", my_stats$bb_per_100, "model predicts ", 
-    for_comparison)
-```
-
-+ This model is starting to look better, let me now try to square pfr as well
-
-## Fit 5 
 +  Square the pfr as well as threebet
 
 ```{r,echo=FALSE}
@@ -568,7 +542,7 @@ paste("my actual win rate is", my_stats$bb_per_100, "model predicts ",
 
 + Perhaps this is due to overfitting, but this looks pretty close.  Run a test train split and see what happens
 
-### Test/Train split on Fit_5
+#### Test/Train split 
 
 ```{r}
 # Create test/train
@@ -592,8 +566,8 @@ error <- actual - fit_6
 paste("my RMSE is", sqrt(mean(error^2)))
 ```
 
-### Summary Fit 5
-+  RMSE results are terrible
+#### Summary For Fit
++  RMSE results are pretty bad
     + Missing a winrate by over 17 bb makes this model useless
     + It looks like the categorical data is doing all the heavy lifting 
         + The model is evaluating players into essentially two different strata, and the other dependent variables aren't really doing much
@@ -724,7 +698,8 @@ paste("my RMSE is", sqrt(mean(error^2)))
 
 ```
 
-+ That didn't work either, the RMSE is still terrible
++ R Squared is significantly better, old models did not break .3 and this model is around .72
+    + But it appears the model is overfitting.  The RMSE is still terrible, which indicates our predictive ability isn't very strong
 + Last attempt, I will try and use logistic regression and determine winner/loser instead of bb/100
 
 ## Logistic Regression
