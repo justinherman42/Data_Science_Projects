@@ -1,0 +1,603 @@
+---
+title: "Part_2 county_level election analysis with choroplethr package"
+author: "Justin Herman"
+date: "October 31, 2018"
+output:
+  html_document:
+    highlight: pygments
+    theme: simplex
+    toc: yes
+    toc_float: yes
+  pdf_document:
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,options(warn=-1))
+options(warn=-1)
+```
+
+# Looking at demographic data and Election results
+
+
++ The data set and idea for this project stems from a course on data Camp
+    + The course can be found here[Analyzing Election and Polling Data in R](https://campus.datacamp.com/courses/analyzing-election-and-polling-data-in-r)
+    + The data is county wide 2016 election results
++ Throughout the paper I interchangeably use democratic and republican, which essentially means Donald Trump versus Hilary Clinton
++ We explore interesting relationships between racial, social, and economic demographics.
++ This topic is gigantic and there are so many questions one can ask about 
++ This notebook, is mostly just data exploration and experimentation with the choroplethr mapping package
+    + The package has county wide demographic data which was merged with the Data Camp 2016 county election results dataset
+
+
+# Limitations of Analysis
+
+<br /> 
+
+*This is an observational study.  We can't draw any casual relationships from anything found here.  The entire framework for the analysis conducted below, is based on stats aggregated to the county level.  I don't have statistics for how racial/economic demographics voted individually.  Therefore, any information gained from the dataset is somewhat limited as individual level data would be much more valuable.*
+
++ County sizes range from a minimum of 87 people, to a maximum of almost 10 million. Treating the information gained from a city of 90 people the same as one of millions, is not a favorable approach.  Very likely it will lead to information loss and possibly towards identifying incorrect correlations.  However, I still believe there is plenty of informative knowledge to be gained from analyzing the dataset.  
+    
+
+# Under the Hood 
++ To start, I have hidden the code involved in all of this, so if you are attempting some of this mapping on your own, feel free to download the data sets and my code from my github [mapping_2016_electiondata_with_choroplethr](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/county_wide_exit_polls)
++ Initial steps to clean the data
+    + Merge CSV's
+        + Create master Data Frame to work with built on Trump's voter share and the choroplethr package county data set
+    + Create new columns
+        + Spread Party affiliations into 3 new columns(Republican, Democrat, Independent)
+        + Democratic party vote pct.
+        + Republican Party vote pct.
+        + Voter Turnout
+        + Voter categorical strata by race and income
+            + Decisions for these strata are seemingly arbitrary, but as the groups are distributed differently, they couldn't be standardized. I attempted to choose these strata by looking at mean and asking myself what I wanted to look at 
+            + The average county only has about a 2% black population; However, Minority groups show a large propensity to be congregated in counties
+    + Creation of new columns led to data misentry discovery
+        + Richmond Virginia had a 1.7% voter turnout, other counties had up to 2700% voter turnout
+        + Roanoke was taken out because of duplication
+            + Overall 7 observations out of our 3k plus were removed
+            + These outliers in themselves place some doubt on the validity of the dataset.
+
+<br /> 
+
+With that said, lets get started!
+    
+    
+    
+```{r,message=FALSE,warning=FALSE,echo=FALSE}
+#Library calls
+#install.packages("choroplethr")
+#formatR::tidy_app()
+library(tidyverse)
+library(zoo)
+library(lubridate)
+source("http://vlado.fmf.uni-lj.si/pub/MixeR/MixeR.R")
+library(choroplethr)
+library(choroplethrMaps)
+library(gridExtra)
+library(kableExtra)
+library(knitr)
+library(grid)
+library(gridExtra)
+library(Hmisc)
+# Read in Data
+
+uspres_results <- read.csv("us_pres.csv")
+uspres_results.slim <- uspres_results %>% dplyr::select(-c(is.national.winner, 
+    national.count, national.party.percent))
+# Spread party and votes to their own columns
+uspres_county <- uspres_results.slim %>% spread(key = party, value = vote.count)
+# Add a variable to the uspres_county dataset to store the Democrat's
+# percentage of votes
+uspres_county <- uspres_county %>% mutate(Dem.pct = D/county.total.count) %>% 
+    mutate(Rep.pct = R/county.total.count)
+# Join with other data set
+data(df_county_demographics)
+df_county_demographics <- df_county_demographics %>% rename(county.fips = region)
+merged_df <- left_join(uspres_county, df_county_demographics, by = "county.fips")
+
+# Add Voter Turnout column
+merged_df$voter_turnout <- merged_df$county.total.count/merged_df$total_population
+
+
+# Create factor column for party support levels
+party_supprt_levels <- cut(merged_df$Dem.pct-merged_df$Rep.pct,breaks = c(-.95,-.15,-.05,0,.05,.15,.95), labels = c("heavily republican",'5-15% republican',"Less than 5% republican","Less than 5% Democratic","5-15% Democratic","heavily Democratic") )
+merged_df$party_supprt_levels <- party_supprt_levels
+# Remove outliers
+merged_df <- merged_df[-c(888, 165, 968,2404, 2405, 2391, 2392), ]
+
+aa <- merged_df %>% 
+    mutate(whole_name = paste(state.name," ", county.name)) %>% 
+    group_by(whole_name) %>% 
+    tally() %>% 
+    arrange(desc(whole_name))
+
+# Create population stratas
+population_levels <- cut(merged_df$total_population,breaks = c(0,10000,100000,1000000,20000000), labels = c("under 10k",'10k-100k',"100k-1 million","1million+"))
+merged_df$population_levels <- population_levels
+
+# Create Income based strata
+
+income_levels <- cut(merged_df$per_capita_income,breaks = c(8500,16443,19900,23000,26000,33000,65000), labels = c("bottom 5%", "5-25%","25-50%","50-75%","75-95%","top 5%"))
+
+merged_df$income_levels  <- income_levels 
+
+# Create stratas for all races
+white_strata <- cut(merged_df$percent_white,breaks = c(0,10,20,30,40,50,60,70,80,90,100), labels = c("0-10",'10-20',"20-30","30-40","40-50","50-60","60-70","70-80","80-90","90-100") )
+african_american_strata <-  cut(merged_df$percent_black,breaks = c(-1,0,2,10,30,40,70,100), labels = c("0","0-2","2-10","10-30","30-40","40-70","70+") )
+hispanic_american_strata <-  cut(merged_df$percent_hispanic,breaks = c(-1,0,2,10,30,40,50,60,70,100), labels = c("0","0-2","2-10","10-30","30-40","40-50","50-60","60-70","70+") )
+asian_american_strata <-  cut(merged_df$percent_asian,breaks = c(-1,0,2,10,20,30,100), labels = c("0","0-2","2-10","10-20","20-30","30+") )
+
+merged_df$african_american_strata <- african_american_strata
+merged_df$white_strata <- white_strata
+merged_df$hispanic_american_strata <- hispanic_american_strata
+merged_df$asian_american_strata <- asian_american_strata
+
+#sum(merged_df$per_capita_income*merged_df$total_population)/sum(merged_df$total_population)
+```
+
+
+```{r,echo=FALSE}
+
+# Build population stats
+our_total_pop <- sum(merged_df$total_population)
+
+# Build racial Demographics
+merged_df$white_pop <- merged_df$total_population * merged_df$percent_white
+merged_df$black_pop <- merged_df$total_population * merged_df$percent_black
+merged_df$asian_pop <- merged_df$total_population * merged_df$percent_asian
+merged_df$hispanic_pop <- merged_df$total_population * merged_df$percent_hispanic
+hispanic <- round(sum(merged_df$hispanic_pop)/sum(merged_df$total_population), 
+    2)
+white <- round(sum(merged_df$white_pop)/sum(merged_df$total_population), 
+    2)
+black <- round(sum(merged_df$black_pop)/sum(merged_df$total_population), 
+    2)
+asian <- round(sum(merged_df$asian_pop)/sum(merged_df$total_population), 
+    2)
+
+# Get median age
+merged_df$county_age <- merged_df$total_population * merged_df$median_age
+df_med_age <- sum(merged_df$county_age)/sum(merged_df$total_population)
+
+merged_df[, c("hispanic_pop", "asian_pop", "black_pop", "white_pop")] <- merged_df[, 
+    c("hispanic_pop", "asian_pop", "black_pop", "white_pop")]/100
+
+```
+
+
+## Big picture racial demographics
+
++ Below are 2 different grids 
++ Grid one 
+    + Scatter plot matrix with regression lines for democratic party vote share and the percentage of ethnic breakdowns in a county.
+        + Its very clear from the regression lines in 1st grid that the whiter communities are less likely to support the democrats
+            + This seems like an important relationship, so I will focus on how whiteness effects voting throughout the report 
+    + The other non-white demographics all show a positive correlation between increase in their presence and higher democratic vote share
+        + The regression line themselves don't necessarily explain these relationships well
+        + Eyeballing the Asian community and the Hispanic community, the line clearly doesn't look as though it fits the data well
++ Grid two 
+    + Deeper look at these demographics via a boxplot matrix broken down by hand selected strata
+        + Note the scales for these graphs are custom. Racial demographics vary, smaller communities like the Asian community will never make up counties at levels of 90% plus, and therefore the bins needed to be adjusted manually
+    + Boxplots tells the same story as the scatterplots; however, boxplots allow us to notice deeper trends
+        + We can see that the Hispanic community has a very strange level of democratic party support
+             + It appears party support doesn't increase and in fact decreases as more Hispanics are present in neighborhoods in the range form (30-60%)
+             + Overall nationwide Hispanic support for democrats is around 65%, yet in some areas with over 50% Hispanic population, we are seeing very low support for the democratic party around 25%
+            + I attempt to explore and provide reasoning for this later in my report as well
+    + It also appears there are a significant number of outliers in areas of high white population.  This means many communities that are mostly white, still vote democratic.  
+        
+
+
+
+```{r,echo=FALSE,warning= FALSE}
+
+# Build scatterplots
+black_corr <- merged_df %>% 
+    group_by(percent_black) %>% 
+    dplyr::summarize(Dem_vote_share=mean(Dem.pct)*100) %>% 
+    ggplot(., aes(x=percent_black, y=Dem_vote_share)) +
+    geom_point() +
+    geom_smooth(method="lm",span = 0.3)
+
+white_corr <- merged_df %>% 
+    group_by(percent_white) %>% 
+    dplyr::summarize(Dem_vote_share=mean(Dem.pct)*100) %>% 
+    ggplot(., aes(x=percent_white, y=Dem_vote_share)) +
+    geom_point() +
+    geom_smooth(method="lm",span = 0.3)
+
+Asian_corr <- merged_df %>% 
+    group_by(percent_asian) %>% 
+    dplyr::summarize(Dem_vote_share=mean(Dem.pct)*100) %>% 
+    ggplot(., aes(x=percent_asian, y=Dem_vote_share)) +
+    geom_point() +
+    geom_smooth(method="lm",span = 0.3)
+
+Hispanic_corr <- merged_df %>% 
+    group_by(percent_hispanic) %>% 
+    dplyr::summarize(Dem_vote_share=mean(Dem.pct)*100) %>% 
+    ggplot(., aes(x=percent_hispanic, y=Dem_vote_share)) +
+    geom_point(position=position_jitter(width = 1, height = .5)) +
+    geom_smooth(method="lm",span = 0.3)
+
+grid.arrange(black_corr,Asian_corr,Hispanic_corr,white_corr,
+              top = textGrob("Dem Party vote by ethnic breakdowns",gp=gpar(fontsize=20,font=3)))
+
+
+# Build Boxplots
+box_1 <- ggplot(merged_df, aes(x=white_strata, y=Dem.pct)) + 
+  geom_boxplot()+
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+box_2 <- ggplot(merged_df, aes(x=african_american_strata, y=Dem.pct)) + 
+  geom_boxplot()
+box_3 <- ggplot(merged_df, aes(x=hispanic_american_strata, y=Dem.pct)) + 
+  geom_boxplot()+
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+box_4 <- ggplot(merged_df, aes(x=asian_american_strata, y=Dem.pct)) + 
+  geom_boxplot()+
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+grid.arrange(box_1,box_2,box_3,box_4,ncol=2,
+              top = textGrob("Dem party vote by strata",gp=gpar(fontsize=20,font=3)))
+```
+
+
+# Things to be explored 
++ How does whiteness affects county wide voting behavior?
++ What is the effect of Population size on voting behavior?
++ How does economics affect voting behavior?
++ What is the interaction of economics and population size on voting behavior?
++ Why are areas with high levels of Hispanic population voting republican, given that the Hispanic community generally votes democratic?
+
+
+
+
+# Relationship between whiteness and economics
++ Immediately what comes to my mind is 
+    + what do the income distributions look like in these predominantly White counties?
+        + My assumption is that they will be bimodal (rural "fly-over" country, and suburban communities in coastal America)
++ So to explore this, let's start with finding out where these areas are on the map
+    + So overall, we have 3099 counties, lets break down some maps and display areas of 50% plus white population
+        + about 2400 counties in our data set are somewhere over 50% white
+    + Lets then look at voting support levels for these groups
+
+```{r,echo=FALSE}
+# Build maps at different percantages
+large_white_dfs <-  list()
+large_white_maps <- list()
+i <- 1
+for (pct in c(50, 60, 70, 80, 90))
+{
+    # create list of stratas
+    large_white_dfs[[i]] <- merged_df %>% 
+        rename(region = county.fips) %>% 
+        rename(value = Dem.pct) %>% 
+        filter(percent_white > pct & percent_white < pct+10)
+    # create maps of stratas
+    suppressWarnings(large_white_maps[[i]] <- merged_df %>% 
+        rename(region = county.fips) %>% 
+        rename(value = Dem.pct) %>% 
+        filter(percent_white > pct & percent_white < pct+10) %>% 
+        county_choropleth(.,title = paste(pct,"-",pct+10,"% white"), num_colors = 1) +
+        scale_fill_gradient(high = "Blue", low = "Dark Blue", 
+        na.value = "White", breaks = pretty(merged_df$value, n = 10)))
+        
+    i <- i + 1
+}
+
+n <- length(large_white_maps)
+nCol <- floor(sqrt(n))
+do.call("grid.arrange", c(large_white_maps[1:5], ncol = nCol))
+grid.arrange(box_1,box_2,box_3,box_4,ncol=2,
+              top = textGrob("Dem party vote by strata",gp=gpar(fontsize=20,font=3)))
+```
+
+
+
+```{r,options(warn=-1),echo=FALSE}
+require(RColorBrewer)
+brewer.pal(9, "Set1")
+
+merged_df %>% 
+    group_by(percent_white) %>% 
+    dplyr::summarize(avg_income=mean(per_capita_income)) %>% 
+    ggplot(., aes(x=percent_white, y=avg_income)) +
+    geom_point() +
+    geom_smooth(method="lm",span = 0.3)
+
+ggplot(merged_df, aes(x=white_strata, y=per_capita_income,)) + 
+  geom_boxplot()+
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+myColors <- c("#E41A1C" ,"#377EB8", "#4DAF4A" ,"#984EA3" ,"#FF7F00", "#FFFF33")
+myColors2 <- c("#E41A1C","#377EB8","#FFFF33")
+
+ggplot(merged_df, aes(x=percent_white, y=per_capita_income)) + 
+  geom_point(aes(colour = party_supprt_levels,size = total_population))+
+    scale_size_area(limits = c(1, 10000000), breaks = c(0, 20000,6000000, 10000000))+
+    scale_color_manual(values=myColors)
+
+ggplot(merged_df, aes(x=percent_black, y=per_capita_income)) + 
+  geom_point(aes(colour = party_supprt_levels, size = total_population))+
+    scale_size_area(limits = c(1, 10000000), breaks = c(0, 10000, 100000, 500000, 2000000, 10000000))+
+    scale_color_manual(values=myColors)
+```
+
+
+## Summarize economic/racial relationship
+
++ **It must be stressed, that these stats are median income for entire counties**
++ Areas that are heavily white, include democratic strongholds such as parts of the Northeast, as well as tossup states in the Midwest
++  Surprisingly, the south has very few counties which are majority white.
++ Percapita income, seems to increase as areas become more white
+    + However, this relationship doesn't seem linear.  It clearly tales off and decreases in areas that are 80% + white
+    + democratic counties tend to be richer
+    + Heavy republican counties, make up some of the poorest and most white counties in America
+    + Poor 
++ Our scatter plot reveals a relationship between population size and percapita income.
+    + Heavily democratic areas tend to be cities with population sizes over 1 million
+    + These areas tend to be majority minority population
+
+# Map Tossup, Heavily democratic, and Heavily republican counties
+
+```{r,echo=FALSE}
+## Map heavily republican counties 
+republican_counties <- merged_df %>% 
+    filter(party_supprt_levels== "heavily republican") %>% 
+        rename(region = county.fips) %>% 
+        rename(value = Rep.pct) %>% 
+    county_choropleth(.,title = "Heavily republican Counties", num_colors = 1) +
+        scale_fill_gradient(high = "Red", low = "Dark Red", 
+        na.value = "White")
+## Map heavily dem counties 
+democratic_counties <- merged_df %>% 
+    filter(party_supprt_levels== "heavily Democratic") %>% 
+        rename(region = county.fips) %>% 
+        rename(value = Dem.pct) %>% 
+    county_choropleth(.,title = "Heavily Democratic Counties", num_colors = 1) +
+        scale_fill_gradient(high = "Blue", low = "Dark Blue", 
+        na.value = "White")
+## Map Toss up counties 
+toss_up_counties <-merged_df %>% 
+    filter(party_supprt_levels %in% c("Less than 5% Democratic","Less than 5% republican")) %>%
+    rename(region = county.fips) %>% 
+    rename(value = Rep.pct) %>% 
+    county_choropleth(.,title = "Tossup Counties", num_colors = 1) +
+        scale_fill_gradient(high = "Red", low = "Dark Blue", 
+        na.value = "White")
+
+grid.arrange(suppressWarnings(democratic_counties),suppressWarnings(republican_counties),suppressWarnings(toss_up_counties),ncol=2,
+              top = textGrob("County vote breakdown",gp=gpar(fontsize=20,font=3)))
+```
+
+
++ The maps reveal that most counties in America, are in fact Heavily Republican
++ Tossup counties appear to be scattered throughout many states.
+    + the Mexican border and coastal areas tend to have many toss up counties
+
+
+
+# Create bins for Social and economic stats
++ Below I map categorical levels of party support and income
+## Bin county population size
+
+
+```{r,echo=FALSE}
+## Build population dataframes
+col.pal<-brewer.pal(6,"Paired")
+
+dem_under_10k <- merged_df %>% 
+    filter(total_population<10000) %>% 
+    rename(region = county.fips) %>% 
+        rename(value = party_supprt_levels) %>% 
+    county_choropleth(.,num_colors=4)+
+    scale_fill_manual(name="Per Capita Income",values=rev(col.pal), drop=FALSE)+
+     labs(title = "Under 10k pop",
+       fill = "Party support level")
+
+dem_under_100k <- merged_df %>% 
+    filter(total_population>10000 &total_population<100000) %>% 
+    rename(region = county.fips) %>% 
+        rename(value = party_supprt_levels) %>% 
+    county_choropleth(.,num_colors=4)+
+    scale_fill_manual(name="Per Capita Income",values=rev(col.pal), drop=FALSE)+
+     labs(title = "10k-100k population",
+       fill = "Democratic support level")
+
+dem_under_1million <- merged_df %>% 
+    filter(total_population>100000 &total_population<1000000) %>% 
+    rename(region = county.fips) %>% 
+        rename(value = party_supprt_levels) %>% 
+    county_choropleth(.,num_colors=4)+
+    scale_fill_manual(name="Per Capita Income",values=rev(col.pal), drop=FALSE)+
+     labs(title = "100k-1million population",
+       fill = "Democratic support level")
+
+dem_over_1million <- merged_df %>% 
+    filter(total_population>1000000) %>% 
+    rename(region = county.fips) %>% 
+        rename(value = party_supprt_levels) %>% 
+    county_choropleth(.,num_colors=4)+
+    scale_fill_manual(name="Per Capita Income",values=rev(col.pal), drop=FALSE)+
+     labs(title = "over million population",
+       fill = "Democratic support level")
+
+grid.arrange(dem_under_10k,dem_under_100k, ncol=1,top = textGrob("County vote breakdown",gp=gpar(fontsize=20,font=3)))
+grid.arrange(dem_under_1million,dem_over_1million, ncol=1) 
+```
+
++ The above population maps, are rather self explanatory
++ Higher populations, tend to favor democrats
+
+## Bin Income levels
++ Richer counties, tend to lean democratic 
+```{r,echo=FALSE}
+majority_white <- merged_df %>%
+    filter(percent_white>50)
+minority_white <- merged_df %>%
+    filter(percent_white<50)
+ggplot(majority_white, aes(x=income_levels, y=Dem.pct)) +
+  geom_boxplot()
+```
+
+### Explore interaction of Binned income and population
+
+```{r,echo=FALSE}
+ggplot(merged_df, aes(x=population_levels, y=Dem.pct, fill=income_levels)) +
+           geom_boxplot()+
+     labs(title = "Democratic Support by income and population",
+        fill = "Income Levels",
+        caption = " Justin Herman")
+ggplot(merged_df, aes(x=income_levels, y=Dem.pct, fill=population_levels)) +
+           geom_boxplot()+
+     labs(title = "Democratic Support by income and population",
+        fill = "Population Levels",
+        caption = " Justin Herman")
+ggplot(majority_white, aes(x=population_levels, y=Dem.pct, fill=income_levels)) +
+           geom_boxplot()+
+    labs(title = "Democratic Support by income and population",
+        subtitle = "counties that are more than 50% white(2754 counties)",
+        fill = "Income Levels",
+        caption = " Justin Herman")
+ggplot(minority_white, aes(x=population_levels, y=Dem.pct, fill=income_levels)) +
+           geom_boxplot()+
+    labs(title = "Democratic Support by income and population",
+        subtitle = "counties that are less thatn 50% white(326 counties)",
+        fill = "Income Levels",
+        caption = " Justin Herman")
+ggplot(merged_df, aes(x=population_levels, y=Dem.pct, fill=white_strata)) +
+           geom_boxplot()+
+    labs(title = "Democratic Support by population",
+        subtitle = "each bar represents how white a county is",
+        fill = "White percent Levels",
+        caption = " Justin Herman")
+ggplot(merged_df, aes(x=income_levels, y=Dem.pct, fill=white_strata)) +
+           geom_boxplot()+
+    labs(title = "Democratic Support by income",
+        subtitle = "Each bar represents how white a county is",
+        fill = "White percent Levels",
+        caption = " Justin Herman")
+```
+
+
+# Mapping wealthy neighborhoods
++ Display counties that are in the top 5 % in income
+    + Visually, the below map is deceiving.  Eye balling the map, I would assume that most counties in top 5% of income are republican.  But that is because the counties in Midwest and North Dakota, are much larger in land mass.  Major cities, which are in top 5% and democratic strongholds, are blips on the map.
+    + The table below the map displays how the counties that are in top 5% vote
+        + 62 counties are heavily republican while 59 are heavily democratic.  Overall it is nearly even
+
+    
+```{r,echo=FALSE}
+## where are the welathier neighborhoods
+wealthier_neighborhoods <- merged_df %>% 
+    filter(income_levels== "top 5%") %>% 
+    rename(region = county.fips) %>% 
+        rename(value = party_supprt_levels) %>% 
+    county_choropleth(.,num_colors=4)+
+    scale_fill_manual(name="Per Capita Income",values=rev(col.pal), drop=FALSE)+
+     labs(title = "top 5 % in income",
+       fill = "Party support level")
+wealthier_neighborhoods
+
+wealthier_neighborhoods2 <- merged_df %>% 
+    filter(income_levels== "top 5%") %>% 
+    group_by(party_supprt_levels) %>% 
+    summarise(total_wealthy_counties=n())
+wealthier_neighborhoods2
+
+```
+
+
+# Graph Hispanic Communities in range (20-60% Hispanic)
++ Earlier I noticed a weird trend in the scatterplot for party support among areas that had relatively large levels of Hispanic voters.  
+    + Typically we would expect these areas to be very favorable to democrats, the data showed that was not the case.  Below I attempt to see if the map can give insight into any of this
++ The below maps are the reciprocal of each other. I thought it was helpful to see them displayed where darker blue means higher dem support, and darker red equals higher republican support
+    + Coastal and boarder areas with high Hispanic population, are more democratic
+    + Most of Texas and more inland areas with Hispanic populations, are more republican
+
+
+```{r,warning=FALSE,echo=FALSE}
+Hispanic_corr <- merged_df %>% 
+    filter(percent_hispanic>20 & percent_hispanic < 60) %>% 
+    rename('value'= Dem.pct,
+           'region'= county.fips)
+
+Hispanic_corr2 <- merged_df %>% 
+    filter(percent_hispanic>20 & percent_hispanic < 60) %>% 
+    rename('value'= Rep.pct,
+           'region'= county.fips)
+    
+a <- county_choropleth(Hispanic_corr, num_colors = 1)+
+                  scale_fill_gradient2(high = "Blue", 
+                       low = "Blue", 
+                       na.value = "green",
+                       breaks=pretty(Hispanic_corr$value, n = 10))
+b <- county_choropleth(Hispanic_corr2, num_colors = 1)+
+                  scale_fill_gradient2(high = "Red", 
+                       low = "Red", 
+                       na.value = "green",
+                       breaks=pretty(Hispanic_corr2$value, n = 10))
+grid.arrange(a,b)
+```
+
+## let’s build a voter turnout column 
++ So behind the scenes I created a voter turnout column for our data frame
++ below you can see the histogram and box plots for that column
+    + Summarizing these statistics, 95% of counties fall within 31.3-57.6% voting percentage with the average county voting about 44.5%
+    
+
+```{r,echo=FALSE}
+voter_turnout <- as_data_frame(merged_df$voter_turnout *100)
+min(merged_df$voter_turnout)
+my_hist_plot <- ggplot(merged_df,aes(voter_turnout),stat= "count",) +
+  geom_histogram(fill="lightgreen", color="grey50",binwidth = .05)
+my_box_plot <- ggplot(voter_turnout,aes(x='value',y=value)) +
+geom_boxplot(outlier.colour="black", outlier.shape=16,
+             outlier.size=2, notch=FALSE)
+
+grid.arrange(my_hist_plot,my_box_plot,ncol=2)
+Hmisc::describe(voter_turnout)
+```
+
+
+# Try to find relationship between turnout, Hispanic population, and vote
++ I think this is the smoking gun that explains why areas with high Hispanic voter populations, still tend to vote Republican 
+    + Below you can tell that areas with higher voter turnout (dark Blue), are areas that voted democratic
+    + So the explanation for why heavily Hispanic counties vote republican, is a low voter turnout in those counties
+
+```{r,echo=FALSE}
+Hispanic_corr <- merged_df %>% 
+    filter(percent_hispanic>20 & percent_hispanic < 60) %>% 
+    rename('value'= voter_turnout,
+           'region'= county.fips)
+
+a <- county_choropleth(Hispanic_corr, num_colors = 1)+
+                  scale_fill_gradient2(high = "Blue", 
+                       low = "Blue", 
+                       na.value = "green",
+                       breaks=pretty(Hispanic_corr$value, n = 10))
+a
+```
+
+# Conclusion
++ I think the most interesting takeway from this exploration is how heavily hispanic counties(in Texas in particular), are voting republican.
+    + It appears that low voter turnout might be a significant explanation for this
++ Our expoloratory analysis gives us strong insight into future model building as well as provides us an understanding of social dynamics
++ Overall The Package is very fun to work with
+
+```{r,echo=FALSE}
+# library(MASS)
+# fit <- lm( Dem.pct~ .,data=merged_df)
+# fit <- update(fit,.~.-county.name)
+# fit <- update(fit,.~.-D)  
+# fit <- update(fit,.~.-R)
+# fit <- update(fit,.~.-state.name)
+# fit <- update(fit,.~.-county.fips)
+# fit <- update(fit,.~.+I(percent_white*per_capita_income))
+# fit <- update(fit,.~.+I(percent_white*per_capita_income))
+# fit <- update(fit,.~.+I(per_capita_income*percent_black))
+# #step <- stepAIC(fit, direction="both")
+# #step$anova
+# # Evaluate the model
+# summary(fit)
+```
+
