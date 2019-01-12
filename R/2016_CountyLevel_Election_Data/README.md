@@ -1,8 +1,7 @@
-# Data_Science_Projects
-+ Projects are split into two main folders
-  + R based projects
-    + Custom stat insertion for poker statistics
-    + Attempt to create linear models for poker winrate
-    + NYT webscrape via times api
-  + Python projects
-    + Data Pipeline with random forest model for titantic survival Dataset
+2 part analysis of county wide 2016 election data
+# Part 1 
++ focus on simple linear model, exploring how white a county was in 2016, effected presidential voting beahvior
++ For executed rpubs file see [link](http://rpubs.com/justin_herman_42/457709)
+
+# Part 2
++ data visualization using the choroplethr package
