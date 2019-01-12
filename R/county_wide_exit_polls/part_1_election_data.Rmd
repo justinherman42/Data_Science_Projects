@@ -54,7 +54,6 @@ party_supprt_levels <- cut(merged_df$Dem.pct-merged_df$Rep.pct,breaks = c(-.95,-
 merged_df$party_supprt_levels <- party_supprt_levels
 # Remove outliers
 merged_df <- merged_df[-c(888, 165, 968,2404, 2405, 2391, 2392), ]
-
 aa <- merged_df %>% 
     mutate(whole_name = paste(state.name," ", county.name)) %>% 
     group_by(whole_name) %>% 
@@ -66,9 +65,7 @@ population_levels <- cut(merged_df$total_population,breaks = c(0,10000,100000,10
 merged_df$population_levels <- population_levels
 
 # Create Income based strata
-
 income_levels <- cut(merged_df$per_capita_income,breaks = c(8500,16443,19900,23000,26000,33000,65000), labels = c("bottom 5%", "5-25%","25-50%","50-75%","75-95%","top 5%"))
-
 merged_df$income_levels  <- income_levels 
 
 # Create stratas for all races
@@ -76,13 +73,11 @@ white_strata <- cut(merged_df$percent_white,breaks = c(0,10,20,30,40,50,60,70,80
 african_american_strata <-  cut(merged_df$percent_black,breaks = c(-1,0,2,10,30,40,70,100), labels = c("0","0-2","2-10","10-30","30-40","40-70","70+") )
 hispanic_american_strata <-  cut(merged_df$percent_hispanic,breaks = c(-1,0,2,10,30,40,50,60,70,100), labels = c("0","0-2","2-10","10-30","30-40","40-50","50-60","60-70","70+") )
 asian_american_strata <-  cut(merged_df$percent_asian,breaks = c(-1,0,2,10,20,30,100), labels = c("0","0-2","2-10","10-20","20-30","30+") )
-
 merged_df$african_american_strata <- african_american_strata
 merged_df$white_strata <- white_strata
 merged_df$hispanic_american_strata <- hispanic_american_strata
 merged_df$asian_american_strata <- asian_american_strata
 
-#sum(merged_df$per_capita_income*merged_df$total_population)/sum(merged_df$total_population)
 ```
 
 
@@ -115,7 +110,6 @@ kable(uspres_results[1:5,])
 
         
 ```{r,echo=FALSE}
-
 # Build population stats
 our_total_pop <- sum(merged_df$total_population)
 
@@ -166,7 +160,6 @@ paste(cor(merged_df$Dem.pct, merged_df$percent_white),
       "Correlation between democratic party suport and white voters")
 paste(cor(merged_df$Rep.pct, merged_df$percent_white), 
       "Correlation between Republican party suport and white voters")
-
 dems <- merged_df %>% 
     ggplot(., aes(x = percent_white, y = Dem.pct)) + 
     geom_point() + 
@@ -238,8 +231,6 @@ high_support <- merged_df %>%
     filter(Dem.pct > 0.5) %>% 
     mutate(Dem.pct = round(Dem.pct,2))%>% 
     mutate(Rep.pct= round(Rep.pct,2))
-    
-# cor(low_support$Rep.pct,low_support$percent_white)
 
 my_fit <- lm(Dem.pct ~ percent_white, data = low_support)
 layout(matrix(c(1, 2, 3, 4), 2, 2))
@@ -265,24 +256,8 @@ mtext("HIGH DEMOCRATIC PARTY SUPPORT", side = 3, line = -1, outer = TRUE)
 
 
 ```{r,echo=FALSE}
-##outliers
-#low_states_names <- as.character(low_support$state.name[c(1127,1298,1409,1581)])
-#low_counties_names <- as.character(low_support$county.name[c(1127,1298,1409,1581)])
-#kable(as_data_frame(cbind(state=low_states_names,county=low_counties_names)),caption ="Outliers in low democratic support")
 kable(low_support[c(1125, 1296, 1407, 1579), ], caption = "Outliers in low democratic support")
-## Outliers high_states_names <-
-## as.character(high_support$county.name[c(254,94,309)])
-## high_counties_names <-
-## as.character(high_support$county.name[c(287,37,263)])
-## kable(as_data_frame(cbind(state=high_states_names,county=high_counties_names)),caption
-## ='Outliers in high democratic support')
 kable(high_support[c(254, 94, 309), ], caption = "Outliers in high democratic support")
-
-
-
-
-
-#low_support[c(1125, 1296, 1407, 1579), -c(6) ]
 ```
 
  <br />  
@@ -303,4 +278,4 @@ kable(high_support[c(254, 94, 309), ], caption = "Outliers in high democratic su
     + Intuitively I think this makes sense.  We have not even begun to get into the multiple layers of social, racial and economics that influence voting.  But we sort of know that generally speaking some areas with large white populations swing democratic. 
 
 ## Limits of Data
-+ Unfortunately these are exit polls, which presumably tend to have some sampling bias which should be concerning when extrapolating to the general population.  
++ Unfortunately the data is aggregated at the county level. Knowledge of individual voting behavior, would be much more powerful.  
