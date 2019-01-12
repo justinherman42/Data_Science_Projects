@@ -5,3 +5,4 @@
 
 # Part 2
 + data visualization using the choroplethr package
++ For executed rpubs file see [link](http://rpubs.com/justin_herman_42/457725) 
