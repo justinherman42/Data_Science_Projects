@@ -1,0 +1,306 @@
+---
+title: "County-wide voting behavior based on racial demographics"
+author: "Justin Herman"
+date: "November 9, 2018"
+output:
+  html_document:
+    theme: "simplex"
+    highlight: 'pygments'
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r,message=FALSE,warning=FALSE,echo=FALSE}
+#Library calls
+#formatR::tidy_app()
+
+#install.packages("choroplethr", dependencies = TRUE)
+library(tidyverse)
+library(zoo)
+library(lubridate)
+library(choroplethr)
+library(choroplethrMaps)
+library(gridExtra)
+library(kableExtra)
+library(knitr)
+library(grid)
+# Read in Data
+uspres_results <- read.csv("us_pres.csv")
+uspres_results.slim <- uspres_results %>% dplyr::select(-c(is.national.winner, 
+    national.count, national.party.percent))
+# Spread party and votes to their own columns
+uspres_county <- uspres_results.slim %>% spread(key = party, value = vote.count)
+# Add a variable to the uspres_county dataset to store the Democrat's
+# percentage of votes
+uspres_county <- uspres_county %>% mutate(Dem.pct = D/county.total.count) %>% 
+    mutate(Rep.pct = R/county.total.count)
+# Join with other data set
+data(df_county_demographics)
+df_county_demographics <- df_county_demographics %>% rename(county.fips = region)
+merged_df <- left_join(uspres_county, df_county_demographics, by = "county.fips")
+
+# Add Voter Turnout column
+merged_df$voter_turnout <- merged_df$county.total.count/merged_df$total_population
+
+
+# Create factor column for party support levels
+party_supprt_levels <- cut(merged_df$Dem.pct-merged_df$Rep.pct,breaks = c(-.95,-.15,-.05,0,.05,.15,.95), labels = c("heavily republican",'5-15% republican',"Less than 5% republican","Less than 5% Democratic","5-15% Democratic","heavily Democratic") )
+merged_df$party_supprt_levels <- party_supprt_levels
+# Remove outliers
+merged_df <- merged_df[-c(888, 165, 968,2404, 2405, 2391, 2392), ]
+
+aa <- merged_df %>% 
+    mutate(whole_name = paste(state.name," ", county.name)) %>% 
+    group_by(whole_name) %>% 
+    tally() %>% 
+    arrange(desc(whole_name))
+
+# Create population stratas
+population_levels <- cut(merged_df$total_population,breaks = c(0,10000,100000,1000000,20000000), labels = c("under 10k",'10k-100k',"100k-1 million","1million+"))
+merged_df$population_levels <- population_levels
+
+# Create Income based strata
+
+income_levels <- cut(merged_df$per_capita_income,breaks = c(8500,16443,19900,23000,26000,33000,65000), labels = c("bottom 5%", "5-25%","25-50%","50-75%","75-95%","top 5%"))
+
+merged_df$income_levels  <- income_levels 
+
+# Create stratas for all races
+white_strata <- cut(merged_df$percent_white,breaks = c(0,10,20,30,40,50,60,70,80,90,100), labels = c("0-10",'10-20',"20-30","30-40","40-50","50-60","60-70","70-80","80-90","90-100") )
+african_american_strata <-  cut(merged_df$percent_black,breaks = c(-1,0,2,10,30,40,70,100), labels = c("0","0-2","2-10","10-30","30-40","40-70","70+") )
+hispanic_american_strata <-  cut(merged_df$percent_hispanic,breaks = c(-1,0,2,10,30,40,50,60,70,100), labels = c("0","0-2","2-10","10-30","30-40","40-50","50-60","60-70","70+") )
+asian_american_strata <-  cut(merged_df$percent_asian,breaks = c(-1,0,2,10,20,30,100), labels = c("0","0-2","2-10","10-20","20-30","30+") )
+
+merged_df$african_american_strata <- african_american_strata
+merged_df$white_strata <- white_strata
+merged_df$hispanic_american_strata <- hispanic_american_strata
+merged_df$asian_american_strata <- asian_american_strata
+
+#sum(merged_df$per_capita_income*merged_df$total_population)/sum(merged_df$total_population)
+```
+
+
+# Data verification
+
++ The dataset is a 2016 election result county-wide dataset.
+    + Looks like this:
+
+```{r}
+kable(uspres_results[1:5,])
+```
+
++ This dataset is from datacamp class on election data  
+    + The course can be found here[Analyzing Election and Polling Data in R](https://campus.datacamp.com/courses/analyzing-election-and-polling-data-in-r)
++ Some outliers have been removed
++ If anyone is interested, I really haven't gotten far in analysis(some graphs are mislabeled) and it may be offensive and typo filled(I'm admittedly left leaning), but here is the link to the overall project I have going so far. My main goal was to get used to the graphing packages
+    + [myproject](http://rpubs.com/justin_herman_42/436043)
+
+
+## Do Not Blindly Trust Data
++ How representative of real world facts is this data set?
++ Well one easy way to validate our dataset is comparing summary statistics of the population in these observations to data taken from 
+    [Wiki US demography ](https://en.wikipedia.org/wiki/Demography_of_the_United_States)
+    + Population Of US
+    + Age demographics
+    + Race demographics
++ The results of comparing our data set to the wiki data set are displayed below
+    + I would say our data set is highly representative of actual real world demographics
+    + This is very reassuring considering we have little understanding of how this data was collected
+
+        
+```{r,echo=FALSE}
+
+# Build population stats
+our_total_pop <- sum(merged_df$total_population)
+
+# Build racial Demographics
+merged_df$white_pop <- merged_df$total_population * merged_df$percent_white
+merged_df$black_pop <- merged_df$total_population * merged_df$percent_black
+merged_df$asian_pop <- merged_df$total_population * merged_df$percent_asian
+merged_df$hispanic_pop <- merged_df$total_population * merged_df$percent_hispanic
+hispanic <- round(sum(merged_df$hispanic_pop)/sum(merged_df$total_population), 
+    2)
+white <- round(sum(merged_df$white_pop)/sum(merged_df$total_population), 
+    2)
+black <- round(sum(merged_df$black_pop)/sum(merged_df$total_population), 
+    2)
+asian <- round(sum(merged_df$asian_pop)/sum(merged_df$total_population), 
+    2)
+
+# Get median age
+merged_df$county_age <- merged_df$total_population * merged_df$median_age
+df_med_age <- sum(merged_df$county_age)/sum(merged_df$total_population)
+
+# Build DF with these summary results
+our_data <- rbind(total_pop = our_total_pop, med_age = df_med_age, white, 
+    african_american = black, asian, hispanic)
+save_names <- rownames(our_data)
+wiki_data <- rbind(3.18e+08, 37, 62, 12.6, 5.2, 17)
+my_df <- as_data_frame(cbind(our_data, wiki_data))
+colnames(my_df) <- c("our_data_set", "wiki_data")
+rownames(my_df) <- save_names
+my_df <- sapply(my_df, function(x)
+{
+    format(x, scientific = FALSE)
+})
+rownames(my_df) <- save_names
+kable(my_df)
+merged_df[, c("hispanic_pop", "asian_pop", "black_pop", "white_pop")] <- merged_df[, 
+    c("hispanic_pop", "asian_pop", "black_pop", "white_pop")]/100
+```
+
+
+# Data Exploration
+
+## Explore relationship with white voters and party support
++ Let's take a deeper look at how white a county is can effect its voting behavior 
+
+```{r,echo=FALSE}
+paste(cor(merged_df$Dem.pct, merged_df$percent_white), 
+      "Correlation between democratic party suport and white voters")
+paste(cor(merged_df$Rep.pct, merged_df$percent_white), 
+      "Correlation between Republican party suport and white voters")
+
+dems <- merged_df %>% 
+    ggplot(., aes(x = percent_white, y = Dem.pct)) + 
+    geom_point() + 
+    geom_smooth(method = "lm") + 
+    ggtitle("Democratic Party")
+
+repubs <- merged_df %>% 
+    ggplot(., aes(x = percent_white, y = Rep.pct)) + 
+    geom_point() + 
+    geom_smooth(method = "lm") + ggtitle(" Republican Party")
+grid.arrange(dems, repubs, ncol = 2)
+```
+
++ Extremely negative relationship between white voters and democratic party support
+    + Correlation of  -.59
++ When looking at this relationship above, we want to know how well it fits the data. 
+    + Now in theory the smooth line, which produces the shaded area around the blue regression line, indicates to us how well the line fits the data.  We can see that at low levels of white voters, the shade seems to get wider indicating the model may not work as well in that region.   
+    + We can also explore this through modelling this relationship and looking at the residuals
+        + The added benefit of this approach is it will allow us to plot many error tests, including outlier tests
++ Below I Run a simple model Democratic Party Support ~ percent_white.  Our plotted residuals and regression checks are below
+
+# Modeling      
+
++ I had many columns I had to take out becuase of likely collinearity issues
+    + i built many exploratory factor vairables, which directly correlate with specific columns, these were all removed
+    + States and county names would leave far too many Independent variables so they were removed
+    + Total population was removed so that I could look at a population factor column of small, to large size counties
+    + during backwards selection, percapita income is also removed.
+```{r}
+df_2 <- merged_df[,-c(1,2,3,4,5,7,9,10,19,20,21,22,23,24,25,26,27,28,29)]
+my_fit <- lm(Dem.pct ~ ., data = df_2)
+layout(matrix(c(1, 2, 3, 4), 2, 2))
+summary(my_fit)
+```
+
+
+
+## Analysis From Summary Model Stats
++ Percent_white is statistically significant at explaining how people voted
++ The min and max for the residuals seem in line with each other, as do the quartiles. The median is close to 0, this all shows that residuals are seemingly normally distributed.
++ The model explains about 35% of the data's variance r squared of .349
++ Lets take a deeper look at the residuals by plotting them
+
+## Plot Residuals  
+```{r}
+layout(matrix(c(1, 2, 3, 4), 2, 2))
+plot(my_fit)
+```
+
+
++ This model diagnostic shows that at low levels of democratic party support the percentage of the white population does an excellent job at determining democratic party support.  
++ The residuals, are the error, or how good/poor that line fits the data.  Theoretically if this line correctly explains the relationship, than our residuals would be consistent across all observations. 
++ However, as democratic support increases, we can see the model's residuals start to become inconsistent.  This can also be seen on the normality qq plot
+    + This is a relationship I Will look into deeper below by separating the data into areas where it seems my residuals start to spread out.
+        + This deeper analysis will also reveal some outlier cases for us to analyze.  
+
+## Run Alternative models
++ Model 1, will model how percent white influences voting percentage in low democratic counties(less than 40% democratic)
+    + I expect our residuals to look much better here
++ Model 2   will model how percent white influences voting percentage in high democratic counties(50%+)
+    + I expect our residuals to be all over the place here
+```{r,echo=TRUE}
+low_support <- merged_df %>% 
+    filter(Dem.pct < 0.4) %>% 
+    mutate(Dem.pct= round(Dem.pct,2)) %>% 
+    mutate(Rep.pct= round(Rep.pct,2))
+    
+high_support <- merged_df %>% 
+    filter(Dem.pct > 0.5) %>% 
+    mutate(Dem.pct = round(Dem.pct,2))%>% 
+    mutate(Rep.pct= round(Rep.pct,2))
+    
+# cor(low_support$Rep.pct,low_support$percent_white)
+
+my_fit <- lm(Dem.pct ~ percent_white, data = low_support)
+layout(matrix(c(1, 2, 3, 4), 2, 2))
+plot(my_fit)
+mtext("LOW DEMOCRATIC PARTY SUPPORT", side = 3, line = -1, outer = TRUE)
+
+my_fit <- lm(Dem.pct ~ percent_white, data = high_support)
+layout(matrix(c(1, 2, 3, 4), 2, 2))
+plot(my_fit)
+mtext("HIGH DEMOCRATIC PARTY SUPPORT", side = 3, line = -1, outer = TRUE)
+
+```
+
+### Conclusions from Residuals
++ The above plots show 
+    + In areas of high democratic support, the percentage of the population that is white, is inconsistent at predicting democratic support levels
+    + In areas of low democratic support, the percentage of the population that is white, is consistent at predicting democratic support levels
+
+# Explore outliers
++ The neat part about our residuals check and models, is they allow us to explore outliers in the data relatively easily
++ Lets take a look at some of these outliers
++ First outlier analysis below 
+
+
+```{r,echo=FALSE}
+##outliers
+#low_states_names <- as.character(low_support$state.name[c(1127,1298,1409,1581)])
+#low_counties_names <- as.character(low_support$county.name[c(1127,1298,1409,1581)])
+#kable(as_data_frame(cbind(state=low_states_names,county=low_counties_names)),caption ="Outliers in low democratic support")
+kable(low_support[c(1125, 1296, 1407, 1579), ], caption = "Outliers in low democratic support")
+## Outliers high_states_names <-
+## as.character(high_support$county.name[c(254,94,309)])
+## high_counties_names <-
+## as.character(high_support$county.name[c(287,37,263)])
+## kable(as_data_frame(cbind(state=high_states_names,county=high_counties_names)),caption
+## ='Outliers in high democratic support')
+kable(high_support[c(254, 94, 309), ], caption = "Outliers in high democratic support")
+
+
+
+
+
+#low_support[c(1125, 1296, 1407, 1579), -c(6) ]
+```
+
+ <br />  
+ 
++ Our outliers reveal some interesting possibilities
+    + In areas of low democratic support, our outliers are counties which support the democratic party even less than would be typically expected.
+    + These areas have extremely low levels of Dem party support, and are majority minority communities
+    + Even more amazing, is all four of these observations happen to be in Texas, with Ochiltree Texas having a 50% Hispanic population, yet only a 9% democratic party support
+    + Population size could have something to do with this as these populations are very small
+        + I believe voter turnout is significant here as well. 
+    + For areas of high democratic support, our outliers are counties with high democratic support where our model under predicts democratic party support
+
+# Observations from general exploration
++ The obvious point, white voters tend to support Republicans more than Democrats
++ It appears areas that have low democratic support, are very likely to have high percentages of white population
++ Areas with high democratic support seem to fluctuate in terms of the white population size
++ Put together this means while you can assume with some confidence that if I tell you an area leans republican, it will in fact be a largely white neighborhood, you can't necessarily make the assumption that if an area has high democratic support it is in fact a low white population.
+    + Intuitively I think this makes sense.  We have not even begun to get into the multiple layers of social, racial and economics that influence voting.  But we sort of know that generally speaking some areas with large white populations swing democratic. 
+
+## Limits of Data
++ Unfortunately these are exit polls, which presumably tend to have some sampling bias which should be concerning when extrapolating to the general population.  
