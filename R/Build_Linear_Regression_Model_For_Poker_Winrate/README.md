@@ -37,5 +37,5 @@
 + Explore these statistics and test to see if assumptions for inference are met
 + Use these statistics to run a multiple linear regression model to try and predict a player’s winrate
 
-## Please see rpubs file [here](http://rpubs.com/justin_herman_42/457605) for execution of notebook file
+## Please see rpubs file [here](http://rpubs.com/justin_herman_42/457701) for execution of notebook file
 + code is also attached as notebook file in this directory
