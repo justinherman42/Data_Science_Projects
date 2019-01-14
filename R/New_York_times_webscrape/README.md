@@ -3,9 +3,10 @@
 + shiny app for pw protection
 + The notebook goes through my evolution in understanding of how to interact with the Times website
 + Graphs and summary statistics are provided on the metadata yielded from webscrape
-
++ This project is just a surface level interaction with the API.  
 # Please see attached link [here](http://rpubs.com/justin_herman_42/430032) for executed script
-# Conclusion
-+ I really wanted to go further with this, and may do so at a later time.  
-    + My idea here was to produce some sort of modern day Manufactoring consent type analysis of the NY Times
-    + Combining this data with sentiment analysis, could lead to some understanding of the bias presented in one of the most respected newspapers in the world
+# Ideas to explore 
++ I really wanted to go further with this, and may do so at a later time. 
+    + How does the media portray terrorist acts differently depending upon race and religion?
+    + Can sentiment analysis lead to some understanding of the bias presented in one of the most respected newspapers in the world?
+    + A deeper dive and even more interesting would involve combining the Times API data with opinion polls on the topic.   This may provide some clarity over establishing if news mirrors the publics sentiment, or if public sentiment is driven by what is reported
