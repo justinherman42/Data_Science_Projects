@@ -9,4 +9,6 @@
 + I really wanted to go further with this, and may do so at a later time. 
     + How does the media portray terrorist acts differently depending upon race and religion?
     + Can sentiment analysis lead to some understanding of the bias presented in one of the most respected newspapers in the world?
-    + A deeper dive and even more interesting would involve combining the Times API data with opinion polls on the topic.   This may provide some clarity over establishing if news mirrors the publics sentiment, or if public sentiment is driven by what is reported
+    + How has 9/11 affected reporting on the topic of domestic terrorism?
+    + A deeper dive could involve combining the Times API data with opinion polls on the topic of terrorism.  This may provide some clarity over establishing if news mirrors the publics sentiment, or if public sentiment is driven by what is reported.
+    
