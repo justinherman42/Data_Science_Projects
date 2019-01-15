@@ -8,3 +8,4 @@
     + General Data manipulation/visualization project file
   + Python projects
     + Data Pipeline with random forest model for titantic survival Dataset
+    + Developing gym app to track powerlifting workouts
