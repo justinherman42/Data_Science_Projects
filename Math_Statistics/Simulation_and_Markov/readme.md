@@ -12,4 +12,4 @@ Smith is in jail and has 1 dollar; he can get out on bail if he has 8 dollars. A
   
   
   
-  please see attached rpubs file[link](https://rpubs.com/justin_herman_42/436246)
+  please see attached rpubs file [link](https://rpubs.com/justin_herman_42/436246)
