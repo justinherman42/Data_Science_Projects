@@ -13,7 +13,7 @@
     + Regex projects 
 ## Python projects
   + **Data Pipeline with random forest model for titanic survival Dataset** - project is built to be run locally from command prompt
-  + **MNIST_Nueral_Network- develop a NN from scratch and apply it to softmax classification of MNIST dataset
+  + **MNIST_Nueral_Network**- develop a NN from scratch and apply it to softmax classification of MNIST dataset
   + **Cloud VM**- transfers titanic model onto VM and writes/ reads results from cloud buckets 
   + **gym app to track powerlifting workouts**
       + project is incomplete  
