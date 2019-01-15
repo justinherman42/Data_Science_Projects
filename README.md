@@ -1,11 +1,10 @@
 # Data_Science_Projects
 ## Projects are split into two main folders
 + R based projects
-  + 2016_Presidential_Election_exploration
-      + explores Social and economic factors from county level 2016 election results
-  + Delevop Program to create Custom poker statistics
+  + *2016_Presidential_Election_exploration*- explores Social and economic factors from county level 2016 election results
+  + *Delevop Program to create Custom poker statistics*
       + Custom stat insertion program from sql-xml file
-  + Attempt to create linear models for poker winrate
+  + *Attempt to create linear models for poker winrate*
       + Basic exploration to find a regresison model for poker winrate
         + classification model ends up being a better model 
     + NYT webscrape via times api
