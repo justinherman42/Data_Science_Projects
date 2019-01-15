@@ -1,11 +1,11 @@
 # Data_Science_Projects
-+ Projects are split into two main folders
-  + R based projects
-    + 2016_Presidential_Election_exploration
+## Projects are split into two main folders
++ R based projects
+  + 2016_Presidential_Election_exploration
       + explores Social and economic factors from county level 2016 election results
-    + Delevop Program to create Custom poker statistics
+  + Delevop Program to create Custom poker statistics
       + Custom stat insertion program from sql-xml file
-    + Attempt to create linear models for poker winrate
+  + Attempt to create linear models for poker winrate
       + Basic exploration to find a regresison model for poker winrate
         + classification model ends up being a better model 
     + NYT webscrape via times api
@@ -16,7 +16,7 @@
       + Part 3 looks into correlations between food insecurity and government expenditures 
     + Regex projects 
   + Python projects
-    + Data Pipeline with random forest model for titantic survival Dataset
+  + Data Pipeline with random forest model for titantic survival Dataset
       + project is built to be run locally from command prompt
     + Cloud Vm- tranfers titanic model onto VM
       + transfers titanic project onto VM and writes/ reads reults from cloud buckets 
