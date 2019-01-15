@@ -2,13 +2,9 @@
 ## Projects are split into two main folders
 + R based projects
   + *2016_Presidential_Election_exploration*- explores Social and economic factors from county level 2016 election results
-  + *Delevop Program to create Custom poker statistics*
-      + Custom stat insertion program from sql-xml file
-  + *Attempt to create linear models for poker winrate*
-      + Basic exploration to find a regresison model for poker winrate
-        + classification model ends up being a better model 
-    + NYT webscrape via times api
-      + basic look at the term domestic terrorism with some vidualization from api results
+  + Delevop Program to create Custom poker statistics - Custom stat insertion program from sql-xml file
+  +  Attempt to create linear models for poker winrate - Basic exploration to find a regresison model for poker winrate
+  + NYT webscrape via times API - basic look at the term domestic terrorism with some vidualization from api results
     + General Data manipulation/visualization project file
       + Part 1 looks into imdb ratings
       + Part 2 looks into Tuberculosis and other diseases acorss nations
