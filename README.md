@@ -9,3 +9,10 @@
   + Python projects
     + Data Pipeline with random forest model for titantic survival Dataset
     + Developing gym app to track powerlifting workouts
+    + Cloud Vm- tranfers titanic model onto VM
+  + stat projects
+    + Poisson distribution experimentation
+    + Builing matrix inverse function via adjoint method
+    + Build N fold convolution function 
+      + Function is applied to determine liklihood of hits in a baseball playoff series and career, given prob distribution for at bats
+     + Simulatiion and Markov methods to solve optimal gambeling strategy problem 
