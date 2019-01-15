@@ -17,11 +17,9 @@
       + project is incomplete  
       + Deals with user_input and records data input locally into both user_files and a master_file
     
- ## Stat projects
-    + Poisson distribution experimentation
-      + answer simple math question via simulation and poisson distibution
-    + Builing matrix inverse function via adjoint method
-    + Build N fold convolution function 
-      + Function is applied to determine liklihood of hits in a baseball playoff series and career, given prob distribution for at bats
-     + Simulatiion and Markov methods to solve optimal gambeling strategy problem
+## Stat projects
+  + **Poisson distribution experimentation** - answer simple math question via simulation and poisson distibution
+  + **Builing matrix inverse function via adjoint method**
+  + **Build N fold convolution function**- Function is applied to determine liklihood of hits in a baseball playoff series and career, given prob distribution for at bats
+  + **Simulatiion and Markov methods**- Solves optimal gambeling strategy problem
  
