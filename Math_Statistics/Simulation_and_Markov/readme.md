@@ -7,5 +7,9 @@ Smith is in jail and has 1 dollar; he can get out on bail if he has 8 dollars. A
   + He bets 1 dollar each time (timid strategy).
 + Question 2
   + He bets, each time, as much as possible but not more than necessary to bring his fortune up to 8 dollars (bold strategy).
-+Follow up
++ Follow up
   + Which strategy gives Smith the better chance of getting out of jail?
+  
+  
+  
+  please see attached rpubs file[link](https://rpubs.com/justin_herman_42/436246)
