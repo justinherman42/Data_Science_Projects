@@ -3,7 +3,7 @@ This program will allow users to choose between different advanced level workout
 
 # Future goals
 + I want to allow the application to provide visual monthly reports and feedback for users.  
-+ However, the real goal here is to provide enough functionality so that the user base would grow.  With a healthy enough user base, I would like to start trying to understand better what workouts are creating the most strength gains.  As such, the final product will need to ask for much more data than what we are looking at currently.  Some examples of things that need to be added
++ However, the real goal here is to provide enough functionality so that the user base can grow.  With a healthy enough user base, I hope to gain insight into what workouts create the most growth in total lifts.  As such, the final product will need to ask for much more data than what we are looking at currently.  Some examples of things that need to be added
     + Food intake and macro nutrient breakdown
     + List of supplements taken
     + Attempt to get an honest answer if any performance enhancers are being used
