@@ -8,4 +8,4 @@
 # Part 2: mapping_2016_election_with_choroplethr
 + data visualization using the choroplethr package
 + This analysis takes a much deeper dive into visualization and data manipulation (please see actual rmd file for code if needed)
-+ For executed rpubs file see [link](http://rpubs.com/justin_herman_42/457725)
++ For executed rpubs file see [link](http://rpubs.com/justin_herman_42/457852)
