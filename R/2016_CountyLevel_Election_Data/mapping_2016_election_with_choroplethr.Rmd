@@ -40,7 +40,7 @@ options(warn=-1)
     
 
 # Under the Hood 
-+ To start, I have hidden the code involved in all of this, so if you are attempting some of this mapping on your own, feel free to download the data sets and my code from my github [mapping_2016_electiondata_with_choroplethr](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/county_wide_exit_polls)
++ To start, I have hidden the code involved in all of this, so if you are attempting some of this mapping on your own, feel free to download the data sets and my code from my github [mapping_2016_electiondata_with_choroplethr](https://github.com/justinherman42/Data_Science_Projects/blob/master/R/2016_CountyLevel_Election_Data/mapping_2016_election_with_choroplethr.Rmd)
 + Initial steps to clean the data
     + Merge CSV's
         + Create master Data Frame to work with built on Trump's voter share and the choroplethr package county data set
