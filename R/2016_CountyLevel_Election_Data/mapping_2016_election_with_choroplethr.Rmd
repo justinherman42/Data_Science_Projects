@@ -377,7 +377,9 @@ grid.arrange(suppressWarnings(democratic_counties),suppressWarnings(republican_c
 
 
 # Create bins for Social and economic stats
+
 + Below I map categorical levels of party support and income
+
 ## Bin county population size
 
 
@@ -560,9 +562,14 @@ Hmisc::describe(voter_turnout)
 
 
 # Try to find relationship between turnout, Hispanic population, and vote
+
 + I think this is the smoking gun that explains why areas with high Hispanic voter populations, still tend to vote Republican 
-    + Below you can tell that areas with higher voter turnout (dark Blue), are areas that voted democratic
-    + So the explanation for why heavily Hispanic counties vote republican, is a low voter turnout in those counties
++ Below you can see a map where the darker blue areas are areas of high voter turnout and lighter areas are areas of low voter turnout.
++ It's hard to get information from the map, so I made a table for high voter turn out(above mean), and low voter turnout(below mean)
+    + Below you can tell that areas in the lower voter turnout table, are areas that voted heavily republican
+    + Such analysis could lead to an interesting area of exploration, as voter turnout should be largely independent of county size.  
+        + So why are these heavily Hispanic areas experiencing low voter turnout?  Individual level voting statistics would help to shed light on this phenomenon.  My assumption, is that Hispanics are either afraid to vote due to intimidation and social factors or voter id laws make it more difficult for Hispanics to vote in these areas.     
+   
 
 ```{r,echo=FALSE}
 Hispanic_corr <- merged_df %>% 
@@ -576,6 +583,36 @@ a <- county_choropleth(Hispanic_corr, num_colors = 1)+
                        na.value = "green",
                        breaks=pretty(Hispanic_corr$value, n = 10))
 a
+
+
+low_turnout <- merged_df %>% 
+    filter(voter_turnout<.449) %>% 
+    filter(percent_hispanic>20 & percent_hispanic < 60)%>% 
+    rename('value'= Dem.pct,
+           'region'= county.fips)
+    
+
+
+higher_turnout <- merged_df %>% 
+    filter(voter_turnout>.449) %>% 
+    filter(percent_hispanic>20 & percent_hispanic < 60) %>% 
+    rename('value'= Dem.pct,
+           'region'= county.fips)
+
+
+# county_choropleth(higher_turnout, num_colors = 1)+
+#                   scale_fill_gradient2(high = "Blue", 
+#                        low = "Blue", 
+#                        na.value = "green",
+#                        breaks=pretty(higher_turnout$value, n = 10))
+# county_choropleth(low_turnout, num_colors = 1)+
+#                   scale_fill_gradient2(high = "Blue", 
+#                        low = "Blue", 
+#                        na.value = "green",
+#                        breaks=pretty(higher_turnout$value, n = 10))
+
+kable(table(low_turnout$party_supprt_levels),caption ="Turnout below averag & 20-60% hispanic counties")
+kable(table(higher_turnout$party_supprt_levels),caption ="Turnout above average & 20-60% hispanic counties")
 ```
 
 # Conclusion
