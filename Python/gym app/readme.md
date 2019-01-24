@@ -11,3 +11,5 @@ This program will allow users to choose between different advanced level workout
 + While there will be plenty of confounding variables to think about, I believe that this is a rather untapped field of data to explore.  
 + As these gyms are more advanced in nature, I believe people will have less incentive to lie, specifically if they know it could lead to discovering which workout routines seem to provide the best results.  
     + Still this would be a observational study, and rely on an honesty system, which should be noted
+
+Executed Notebook file can be viewed [here](https://nbviewer.jupyter.org/github/justinherman42/Data_Science_Projects/blob/master/Python/gym%20app/gym_app_final.ipynb)
