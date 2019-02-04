@@ -1,0 +1,247 @@
+---
+title: "Seasonality in Traffic Flow With dplyr Versus stlplus"
+Author: "Justin Herman"
+output:
+  html_document:
+    theme: "simplex"
+    highlight: 'pygments'
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+# Introduction
++ I wanted to dig into the stl package and learn how to use it to discover trends and seasonality
++ At the same time I wanted to see how dplyr can be used to visualize some of the same trends.
++ Following along with the tutorial **[here](http://www.gardner.fyi/blog/STL-Part-I/)**
+    + Most of the code dealing with data intake and the stlplus package is taken directly from this tutorial
++ I added all code in appendix, and the feather file can be downloaded from the author of the previous tutorials github **[here](https://github.com/dillongardner/NYTraffic/blob/master/NYTrafficData.feather)**
+
+```{r, echo=FALSE,warning=FALSE, message=FALSE}
+library(feather)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(stlplus)
+library(lubridate)
+library(anytime)
+library(fpp2)
+library(GGally)
+library(cowplot)
+library(kableExtra)
+library(knitr)
+library(zoo)
+library(gridExtra)
+library(grid)
+```
+
+
+```{r,echo=FALSE,warning=FALSE, message=FALSE}
+#Data intake- Grab data Create total tolls column
+myData <- read_feather("NYTrafficData.feather")
+myData <- myData[!duplicated(myData),]
+myData$Date <-  lubridate::mdy(myData$Date)
+myData2 <- myData %>%
+  mutate(total_count=`cash-count`+ `etc-count`)
+# convert datetime
+wideData <- myData2 %>%
+  select(Date, id, total_count) %>%
+  mutate(Date=anydate(Date))
+rfkbridge <- wideData %>% 
+    filter(id==2) %>% 
+    arrange(Date)
+# convert count to by 1k people and display total count
+rfkbridge$total_count <- rfkbridge$total_count / 1000
+rfkbridge <- rfkbridge[,c("Date",'total_count')]
+kable(rfkbridge[1:5,],caption= "Edited dataframe")
+```
+
+# Plotting With Dplyr
++ I was having difficulties attempting to use ts package with the data, so I decided to plot some summary statistics in tidy
+    + lets see if we can notice any monthly and weekly trends in the data with dplyr
++ Nice thing about these methods, is they should be pretty robust to missing data.  Unfortunately our dataset doesn't have data for every day(reflective of realistic dataset)  
++ As I later found out, ts dataframes aren't robust to missing data.  If you are trying to convert a df to ts object, you need to join it with a full datetime column and either impute the values or use packages which can deal with missing values.
++ Below I graph monthly and weekday totals
+
+```{r,echo=FALSE,warning=FALSE, message=FALSE}
+# Create day column with name of day I.E Monday.Tuesday...
+rfkbridge$day = strftime(rfkbridge$Date,'%A')
+daily <- rfkbridge %>% group_by(day) %>% 
+    summarize(weekday_total=mean(total_count))
+daily$day <- ordered(daily$day, levels=c("Monday", "Tuesday", "Wednesday", "Thursday", 
+"Friday", "Saturday", "Sunday"))
+ggplot(daily, aes(day,weekday_total))+
+    geom_point()+
+    ggtitle("Average Tolls By Day From 2012-2016")
+
+# Average Tolls By Month From 2012-2016
+monthly <- rfkbridge %>% group_by(month=floor_date(Date, "month")) %>%
+   summarize(amount=mean(total_count))
+plot(monthly$month,monthly$amount,type="o",main="Average Tolls For Each Month From 2012-2016")
+
+# barplot averaged monthly data
+rfkbridge$month = strftime(rfkbridge$Date,'%B')
+monthly <- rfkbridge %>% group_by(month) %>% 
+    summarize(month_total=mean(total_count)) 
+monthly$month <- ordered(monthly$month, levels=c("January", "February", "March", "April", 
+"May", "June", "July","August","September","October","November","December"))
+ggplot(monthly, aes(month,month_total))+
+  geom_bar(stat="identity")+
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+    coord_cartesian(ylim=c(60,100))+
+    ggtitle("Barplot of Average Tolls By Month Aggregated over 2012-2016")
+```
+
+## Summary of Descriptive Stats
++ There is clear seasonality in the data, at multiple levels.  
+    + In terms of weekly, we can see that the weekends have much less total traffic than the weekdays.  
+    + In terms of months, we can see that there is much less traffic in the winter 
+
+# Below Code is Important
++ Create range of dates to merge with our data frame
++ ts doesn't handle missing dates or Na's well.  But at least Na's can be dealt with, missing date indexes can completely throw off your data
++ For the stl package Na's can be handled by imputation
+    + See this [link](https://stackoverflow.com/questions/27368195/r-ts-with-missing-values) or by adding to the function call like i end up doing below(see appendix)
+ 
+
+```{r}
+# Create full date range to merge into df to deal with missing dates
+fullDateRange <- as.data.frame(seq(rfkbridge$Date[1],rfkbridge$Date[1617], by="days"))
+colnames(fullDateRange) <- c("Date")
+rfkbridge <- left_join(fullDateRange, rfkbridge, by='Date')
+kable(rfkbridge[1:5,])
+```
+
+# Attempt visualization as ts object
++ Attempting to visualize as ts object is very difficult
+    + Not all that interpretative 
+    + I plot the stl with frequency of yearly, and by month.
+        + From those stl plots it appears there is clear seasonality on the year level, but it doesn't seem as clear on the monthly level.
+
+```{r,echo=FALSE,warning=FALSE, message=FALSE}
+#Convert to ts and plot ts
+mytimeseries <- ts(rfkbridge[,'total_count'],
+                   frequency =356)
+autoplot(mytimeseries)+
+    ggtitle("yearly trends starting in March")
+plot_grid(autoplot(mytimeseries),ggAcf(mytimeseries,lag=28))
+
+# graphed by year then week
+plot(stl(mytimeseries,na.action = na.approx, s.window ="periodic"),main="Frequency by year with stl")
+mytimeseries <- ts(rfkbridge[,'total_count'],
+                   frequency =52)
+plot(stl(mytimeseries,na.action = na.approx, s.window ="periodic"),main="Frequency by month with stl")
+```
+
+
+
+# STLplus
++ Below I plug my df into stlplus and let it do the work
+    + There is no need to turn dataframe into ts object, stlplus handles dataframes with datetime columns
++ The plot seasonal function allows us to break the dataset down into whatever period we want to look at
+    + Below we look at the daily trends by breaking down to frequency of 7(data points are days)
++ Our inputs, 
+    + df
+    + datetime column 
+    + n.p(frequency)
+    + s.window- from what I can tell this is a smoother function that will regularize the influence of our seasonal data.  If you choose n=25 instead of periodic, you will see more fluctuations in estimates
+    + labels-label data
+    + sub.start tells function what day to start with (1=Sunday)
+    
+```{r,echo=FALSE,warning=FALSE, message=FALSE}
+
+# plug into stlplus
+weekDays <- c("Su", "M", "Tu","W", "Th", "F", "Sa")
+stlDaily <- stlplus(rfkbridge$total_count,t=rfkbridge$Date,
+                    n.p=7, s.window="periodic",
+                    sub.labels=weekDays, sub.start=1)
+
+plot(stlDaily, xlab="Date", ylab="Daily Vehicles (thous.)",main="stlplus call")
+#Plot seasonal function with periodic
+plot_seasonal(stlDaily,main="Plot Seasonal Call With s.window= Periodic")
+
+
+stlDaily <- stlplus(rfkbridge$total_count,t=rfkbridge$Date,
+                    n.p=7, s.window=25,
+                    sub.labels=weekDays, sub.start=1)
+
+#Plot seasonal function with n=25
+plot_seasonal(stlDaily,main="Plot Seasonal Call With s.window= 25")
+
+
+# make monthly plug into stlplus
+# monthly <- rfkbridge
+# day(monthly$Date) <- 1
+# monthly <- monthly %>%
+#   group_by(Date) %>%
+#   summarise_each(funs(mean(., na.rm=T)))
+# 
+# monthNames <- c("Ja", "F", "Mr", "Ap", "Ma", "Jn", "Jl", "Au", "S", "O", "N", "D")
+# 
+# stlmonthly <- stlplus(monthly$total_count,t=monthly$Date,
+#                     n.p=12, s.window=25,
+#                     sub.labels=monthNames, sub.start=3)
+# 
+# #Plot seasonal function with n=25
+# plot_seasonal(stlmonthly,main="Plot month Call With s.window= 25")
+#plot_cycle(stlmonthly)
+```
+
++ It's once again tough to visualize the seasonality in stlplus call 
+
+## Normalize against the seasonality data
++ The idea here is that if we normalize the database we can see how each day's traffic differs from what would be a normal day's traffic 
+
+```{r,echo=FALSE,warning=FALSE, message=FALSE}
+## Taken from turorial linked at beginning
+normalizedData <- rfkbridge
+normalizedData$Total <- normalizedData$total_count - stlDaily$data$seasonal
+day(normalizedData$Date) <- 1
+normalizedData <- normalizedData %>%
+  group_by(Date) %>%
+  summarise_each(funs(mean(., na.rm=T)))
+monthNames <- c("Ja", "F", "Mr", "Ap", "Ma", "Jn", "Jl", "Au", "S", "O", "N", "D")
+stlNormalizedMonthly <- stlplus(normalizedData$Total, t=normalizedData$Date,
+                                n.p=12, s.window=25,
+                                sub.start=3, sub.labels = monthNames)
+
+plot_seasonal(stlNormalizedMonthly, xlab="Date", ylab="Daily Vehicles (thous.)", main="Monthly Datapoints By Year")
+p1 <- plot_cycle(stlNormalizedMonthly, ylim=c(-17, 17), ylab="Yearly Seasonality")
+p2 <- plot_cycle(stlDaily, ylim=c(-17, 17), ylab="Weekly Seasonality")
+grid.arrange(p1,p2, ncol=2,top = textGrob("Normalized daily and monthly averages s.window=25",gp=gpar(fontsize=20,font=3)))
+```
+
++ These Graphs tell us much of the same story that dplyr graphs told us earlier.  We can see that traffic is higher in the summer and during the weekdays
++ Below I change s.window in the stlplus calls to "periodic", and you can see the data displays as smooth mean line
+
+```{r,echo=FALSE,warning=FALSE, message=FALSE}
+weekDays <- c("Su", "M", "Tu","W", "Th", "F", "Sa")
+stlDaily <- stlplus(rfkbridge$total_count,t=rfkbridge$Date,
+                    n.p=7, s.window="periodic",
+                    sub.labels=weekDays, sub.start=1)
+normalizedData <- rfkbridge
+normalizedData$Total <- normalizedData$total_count - stlDaily$data$seasonal
+day(normalizedData$Date) <- 1
+normalizedData <- normalizedData %>%
+  group_by(Date) %>%
+  summarise_each(funs(mean(., na.rm=T)))
+monthNames <- c("Ja", "F", "Mr", "Ap", "Ma", "Jn", "Jl", "Au", "S", "O", "N", "D")
+stlNormalizedMonthly <- stlplus(normalizedData$Total, t=normalizedData$Date,
+                                n.p=12, s.window="periodic",
+                                sub.start=3, sub.labels = monthNames)
+p1 <- plot_cycle(stlNormalizedMonthly, ylim=c(-17, 17), ylab="Yearly Seasonality")
+p2 <- plot_cycle(stlDaily, ylim=c(-17, 17), ylab="Weekly Seasonality")
+grid.arrange(p1,p2, ncol=2,top=textGrob("Normalized daily and monthly averages s.window=per",gp=gpar(fontsize=20,font=3)))
+```
+
+# Conclusion
++ Dplyr is definitely easier to work with, however I'm sure the stl package has many more useful techniques that can be applied to time series data.  This tutorial only scratches the surface
+
+# Appendix 
+```{r, ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
+```
