@@ -10,7 +10,8 @@
       + Part 1 investigates imdb ratings
       + Part 2 investigates Tuberculosis and other diseases across nations
       + Part 3 investigates correlations between food insecurity and government expenditures 
-    + Regex projects 
+    + Regex projects
+  + Seasonality trends with dplyr and stlplus
 ## Python projects
   + **Data Pipeline with random forest model for titanic survival Dataset** - project is built to be run locally from command prompt
   + **MNIST_Nueral_Network**- develop a NN from scratch and apply it to softmax classification of MNIST dataset
