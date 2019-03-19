@@ -19,7 +19,7 @@
   + **gym app to track powerlifting workouts**
       + project is incomplete  
       + Deals with user input and records data input locally into both user files and a Masterfile
-  + Build blockchain object project
+  + **Build blockchain object project**
 ## Stat projects
   + **Poisson distribution experimentation** - answer simple math question via simulation and Poisson distribution
   + **Building matrix inverse function via adjoint method**
