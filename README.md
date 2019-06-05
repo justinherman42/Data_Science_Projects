@@ -1,5 +1,8 @@
 # Data_Science_Projects
 
+## Direct link to recent example of EDA-prediction pipeline
++ [Predicting PH levels](https://rpubs.com/justin_herman_42/497179)
+
 ## R based projects
   + **2016_Presidential_Election_exploration** - explores Social and economic factors from county level 2016 election results
   + **Develop Program to create Custom poker statistics** - Custom stat insertion program from SQL-XML  file
@@ -12,6 +15,7 @@
       + Part 3 investigates correlations between food insecurity and government expenditures 
     + Regex projects
   + **Seasonality trends with dplyr and stlplus**
+  + **Predicting PH levels** EDA-->prediction for a business scenario wherein a company wants to understand it's manufacturing process
 ## Python projects
   + **Data Pipeline with random forest model for titanic survival Dataset** - project is built to be run locally from command prompt
   + **MNIST_Nueral_Network**- develop a NN from scratch and apply it to softmax classification of MNIST dataset
