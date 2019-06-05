@@ -1,0 +1,1054 @@
+---
+title: "Data 624 Final Project"
+author: "Justin Herman"
+date: "May 9, 2019"
+output:
+  html_document:
+    theme: "simplex"
+    highlight: 'pygments'
+---
+
+
+
+<style>h1{text-transform: capitalize}</style>
+<style>h2{text-transform: capitalize}</style>
+<style>h3{text-transform: capitalize}</style>
+<style>p:first-letter {text-transform: capitalize}</style>
+<style>li:first-letter {text-transform: capitalize}</style>
+
+<style type="text/css">body{ /* Normal  */ font-size: 18px;}}</style>
+
+# Understanding The PH Process {.tabset .tabset-fade}
+
+<p style="font-family: times, serif; font-size:17pt; font-style:italic">
+Below I provide a technical write up on the production process of our mineral water brand "ABC Beverage".  This is a supplementary guide to the accompanying business write up.</p> 
+
+<p style="font-family: times, serif; font-size:17pt; font-style:italic">Due to recent fears over the high metallic nature of bottled mineral waters, the government has asked us to document our production process and provide a predictive model for ph levels in our product. Below I will document our entire process with code in three parts.  Part one will contain the Exploratory Data Analysis (EDA). Part two will go over data preparation for modeling, and part three will cover the entire modeling process. There will be some documentaion accompanying our code, however,the material and code is dense. I have provided all our code as I expect the regulatory agencies may attempt to reproduce our results 
+
+## Exploratory Data Analysis {.tabset .tabset-fade}
+
+The first tab "Notes from EDA", contains most of the relevant information gained from EDA. Most notes point towards a tab in the EDA analysis.  Our readers are expected to be able to understand statistical analysis and graphs, as such notes are somewhat limited. The plots and visualizations have been broken down into tabs for presentation purpose. The code for each tab has been added as an appendix at the bottom of each tab. I note multicollinearity issues that are present in the data, however, as I eventually chose a XGboost model, I decided against dropping certain predictors.  
+
+### Notes from EDA
++ Removing the 4 records with null PH value( see section Describe Dataset and PH)
++ Some clear multicollinearity issues(see corrplot section)
+    + last 3 columns seems to share identical correlations with other predictors
+        + Bailing.LVL, Carb.Rel, Alch.Rel 
+        + Carb rel seems to have highest correlation, might be one of last 3 columns to keep
+    + some of Hydrolic pressures have high correlation(see corrplots section)
+    + Bailing Density, have high correlations with each other and last 3 variables
+    + Carb temp and Carb pressure share high correlation with each other
+    + Our variables don't have very strong correlation scores with ph
+    + MNF flow has highest correlation with PH(negative)
++ Brand 'B' has the most frequency followed by Brand 'D'.(see Brand differences section )
++ Differences exist among brands by Density, Balling, and Balling Lvl(see Brand differences section )
++ From the Histogram we can see Hyd.Pressure1, Hyd.Press2,Hyd.Pressure3, Carb.Flow and Balling have some really low counts
+    + Continuous 
++ possible transformation needed for linear models
+    + Some of the variables like Usage.count are skewed and have outliers.
+    + From the Density plots we can see the distribution is not uniform for some of the variables like Hyd.Pressure1, Hyd.Press2, and Hyd.Pressure3.
++ Rounded PSC.CO2 and Pressure.setpoint( see Extra Analysis)
+    
+**Package imports**
+
+```{r,message=FALSE,warning=FALSE}
+rm(list=ls())
+library (MASS)
+library(tidyverse)
+library(psych)
+library(kableExtra)
+library(knitr)
+library(corrplot)
+library(caret)
+library(xlsx)
+library(mice)
+library(gridExtra)
+library(grid)
+library(cowplot)
+library(mice)
+library(VIM)
+library(reshape2)
+library(doParallel)
+
+
+devtools::install_github("dgrtwo/gganimate")
+```
+
+```{r}
+df <- read.xlsx("train.xlsx",1)
+df_w_na <- copy(df)
+df <-  subset(df, !is.na(PH))
+df$Pressure.Setpoint = round(df$Pressure.Setpoint, 0)
+df$PSC.CO2 = round(df$PSC.CO2, 2)
+test <- read.xlsx("test.xlsx",1)
+
+```
+
+### Density Plots
+
+```{r,echo=FALSE}
+par(mfrow = c(3,5), cex = .5)
+for (i in colnames(df)) {
+ smoothScatter(df[,i], main = names(df[i]), ylab = "", xlab = "", colramp = colorRampPalette(c("white", "blue")))
+ }
+```
+
+```{r,eval=FALSE}
+par(mfrow = c(3,5), cex = .5)
+for (i in colnames(df)) {
+ smoothScatter(df[,i], main = names(df[i]), ylab = "", xlab = "", colramp = colorRampPalette(c("white", "blue")))
+ }
+```
+
+
+
+### Describe Dataset and PH
++ PH is normally distributed 
++ mean(8.55) and median (8.54)
++ slight leftward tail
++ Display rows where PH is null( 4 rows total)
+ 
+ 
+```{r,echo=FALSE}
+## General Visualizations
+kable(describe(df),digits =2,'markdown',booktabs =T)
+box_ph <-  ggplot(df, aes(x="PH", y=PH))+geom_boxplot()
+hist_ph <- ggplot(df, aes(x=PH))+geom_histogram(stat='count')
+plot_grid(box_ph,hist_ph, labels = c('A', 'B'))
+```
+
+
+
+<p style="font-family: times, serif; font-size:16pt; font-style:italic">**Display PH is null training data observations**</p> 
+
+
+```{r,echo=FALSE}
+## Grab observations where PH is NA
+kable(df_w_na[(which(is.na(df_w_na$PH))),],digits =2,'markdown',booktabs =T)
+
+
+```
+
+```{r,eval =FALSE}
+
+## General Visualizations
+kable(describe(df),digits =2,'markdown',booktabs =T)
+box_ph <-  ggplot(df, aes(x="PH", y=PH))+geom_boxplot()
+hist_ph <- ggplot(df, aes(x=PH))+geom_histogram(stat='count')
+plot_grid(box_ph,hist_ph, labels = c('A', 'B'))
+
+
+## Grab observations where PH is NA
+kable(df_w_na[(which(is.na(df_w_na$PH))),],digits =2,'markdown',booktabs =T)
+
+
+```
+
+### Brand Differences
++ I explore our brand column, which consists of 4 distinct brands(A,B,C,D)
+```{r,echo=FALSE}
+#Lets see brand codes
+A <- df[df$Brand.Code == "A",]
+Brand_A <- colMeans(A[,2:ncol(A)], na.rm = TRUE)
+B <- df[df$Brand.Code == "B",]
+Brand_B <- colMeans(B[,2:ncol(B)], na.rm = TRUE)
+C <- df[df$Brand.Code == "C",]
+Brand_C <- colMeans(C[,2:ncol(C)], na.rm = TRUE)
+D <- df[df$Brand.Code == "D",]
+Brand_D <- colMeans(D[,2:ncol(D)], na.rm = TRUE)
+Na <- df[!df$Brand.Code %in% c("A", "B", "C", "D"),]
+Brand_Na <- colMeans(Na[,2:ncol(Na)], na.rm = TRUE)
+Brands <- cbind(Brand_A, Brand_B, Brand_C, Brand_D, Brand_Na)
+kable(Brands,digits =2,'markdown',booktabs =T)
+
+
+## Visualizations for Brand code factor column
+a <- df %>% 
+  select_if(is.factor) %>% 
+  gather %>% 
+  ggplot(aes(x = value)) + 
+  geom_histogram(stat='count') + 
+  facet_wrap(~key)
+
+b <- df %>% 
+  select_if(is.factor) %>% 
+  gather %>% 
+  ggplot(aes(x = value)) + 
+  geom_boxplot(aes(x = df$Brand.Code,y = df$PH)) + 
+  facet_wrap(~key)
+
+plot_grid(a,b)
+
+```
+
+```{r,eval=FALSE}
+#Lets see brand codes
+A <- df[df$Brand.Code == "A",]
+Brand_A <- colMeans(A[,2:ncol(A)], na.rm = TRUE)
+B <- df[df$Brand.Code == "B",]
+Brand_B <- colMeans(B[,2:ncol(B)], na.rm = TRUE)
+C <- df[df$Brand.Code == "C",]
+Brand_C <- colMeans(C[,2:ncol(C)], na.rm = TRUE)
+D <- df[df$Brand.Code == "D",]
+Brand_D <- colMeans(D[,2:ncol(D)], na.rm = TRUE)
+Na <- df[!df$Brand.Code %in% c("A", "B", "C", "D"),]
+Brand_Na <- colMeans(Na[,2:ncol(Na)], na.rm = TRUE)
+Brands <- cbind(Brand_A, Brand_B, Brand_C, Brand_D, Brand_Na)
+kable(Brands,digits =2,'markdown',booktabs =T)
+
+
+## Visualizations for Brand code factor column
+boxplot_PH <- df %>% 
+  select_if(is.factor) %>% 
+  gather %>% 
+  ggplot(aes(x = value)) + 
+  geom_histogram(stat='count') + 
+  facet_wrap(~key)
+
+Hist_PH <- df %>% 
+  select_if(is.factor) %>% 
+  gather %>% 
+  ggplot(aes(x = value)) + 
+  geom_boxplot(aes(x = df$Brand.Code,y = df$PH)) + 
+  facet_wrap(~key)
+
+plot_grid(BOXPLOT_PH,Hist_PH)
+
+```
+
+
+
+
+### Corrplots
+
++ Below corrplots follow this trend
+    + first matrix explores all variables
+    + Second matrix explores Bailing.LVL, Carb.Rel, Alch.Rel
+    + Third matrix Carb.Pressure, Carb.Temp
+    + Fourth matrix Hydrolic pressures
+    + Fifth and sixth matrix are our PH versus predictor correlations
+
+<p style="font-family: times, serif; font-size:16pt; font-style:italic">**Entire DF Corrplot**</p> 
+    
+```{r,echo=FALSE}
+## Entire corrplot
+corrplot(cor(df[,2:33],use = "complete.obs", method = "pearson"))
+
+
+```
+
+<p style="font-family: times, serif; font-size:16pt; font-style:italic">**Very High Correlations Corrplot**</p> 
+
+```{r,echo=F}
+## very high cvorrelations 
+corrplot(cor(df[,2:33],use = "complete.obs", method = "pearson")[30:32,30:32, drop=FALSE], cl.pos='n', method = "number")
+corrplot(cor(df[,2:33],use = "complete.obs", method = "pearson")[4:5,4:5, drop=FALSE], cl.pos='n', method = "number")
+```
+
+
+<p style="font-family: times, serif; font-size:16pt; font-style:italic">**Moderate Correlations corrplot**</p> 
+
+```{r,echo=F}
+## somewhat high correlations
+corrplot(cor(df[,2:33],use = "complete.obs", method = "pearson")[9:14,9:14, drop=FALSE], cl.pos='n', method = "number")
+```
+
+<p style="font-family: times, serif; font-size:16pt; font-style:italic">** PH Correlations with Predictors**</p> 
+
+```{r,echo=F}
+## Get PH Correlations with predictors 
+corrplot(cor(df[,2:33],use = "complete.obs", method = "pearson")[1:16,25, drop=FALSE], cl.pos='n', method = "number")
+corrplot(cor(df[,2:33],use = "complete.obs", method = "pearson")[17:32,25, drop=FALSE], cl.pos='n', method = "number")
+```
+
+```{r,eval=FALSE}
+## Entire corrplot
+corrplot(cor(df[,2:33],use = "complete.obs", method = "pearson"))
+## very high cvorrelations 
+corrplot(cor(df[,2:33],use = "complete.obs", method = "pearson")[30:32,30:32, drop=FALSE], cl.pos='n', method = "number")
+corrplot(cor(df[,2:33],use = "complete.obs", method = "pearson")[4:5,4:5, drop=FALSE], cl.pos='n', method = "number")
+## somewhat high correlations
+corrplot(cor(df[,2:33],use = "complete.obs", method = "pearson")[9:14,9:14, drop=FALSE], cl.pos='n', method = "number")
+## Get PH Correlations with predictors 
+corrplot(cor(df[,2:33],use = "complete.obs", method = "pearson")[1:16,25, drop=FALSE], cl.pos='n', method = "number")
+corrplot(cor(df[,2:33],use = "complete.obs", method = "pearson")[17:32,25, drop=FALSE], cl.pos='n', method = "number")
+```
+
+
+
+
+### Scatterplots PH Versus Predictors/ Histograms of Predictors
+
+```{r,echo=FALSE}
+### melt df for plots predictors 2-12
+df.m <- melt(df[,c(2:12,26)], "PH")
+ggplot(df.m, aes(value, PH)) + 
+  geom_point() + 
+  facet_wrap(~variable, scales = "free")
+ggplot(df.m, aes(value)) + 
+  geom_histogram(stat = "count") + 
+  facet_wrap(~variable, scales = "free")
+### melt df for plots predictors 13-25
+df.m <- melt(df[,c(13:25,26)], "PH")
+ggplot(df.m, aes(value, PH)) + 
+  geom_point() + 
+  facet_wrap(~variable, scales = "free")
+ggplot(df.m, aes(value)) + 
+  geom_histogram(stat = "count") + 
+  facet_wrap(~variable, scales = "free")
+### melt df for plots predictors 26-33
+df.m <- melt(df[,c(26:33)], "PH")
+ggplot(df.m, aes(value, PH)) + 
+  geom_point() + 
+  facet_wrap(~variable, scales = "free")
+ggplot(df.m, aes(value)) + 
+  geom_histogram(stat = "count") + 
+  facet_wrap(~variable, scales = "free")
+```
+
+```{r,eval=FALSE}
+### melt df for plots predictors 2-12
+df.m <- melt(df[,c(2:12,26)], "PH")
+ggplot(df.m, aes(value, PH)) + 
+  geom_point() + 
+  facet_wrap(~variable, scales = "free")
+ggplot(df.m, aes(value)) + 
+  geom_histogram(stat = "count") + 
+  facet_wrap(~variable, scales = "free")
+### melt df for plots predictors 13-25
+df.m <- melt(df[,c(13:25,26)], "PH")
+ggplot(df.m, aes(value, PH)) + 
+  geom_point() + 
+  facet_wrap(~variable, scales = "free")
+ggplot(df.m, aes(value)) + 
+  geom_histogram(stat = "count") + 
+  facet_wrap(~variable, scales = "free")
+### melt df for plots predictors 26-33
+df.m <- melt(df[,c(26:33)], "PH")
+ggplot(df.m, aes(value, PH)) + 
+  geom_point() + 
+  facet_wrap(~variable, scales = "free")
+ggplot(df.m, aes(value)) + 
+  geom_histogram(stat = "count") + 
+  facet_wrap(~variable, scales = "free")
+```
+
+
+### Deeper EDA
+
+
+<p style="font-family: times, serif; font-size:16pt; font-style:italic">**Variables that Seem Discrete**</p> 
+
++ Bowl.Setpoint
+    + seems to be measured in intervals of 10, and then the measurements become discrete 
++ Pressure.Setpoint
+    + Three Random non integer measurements 
++ PSC.CO2
+    + rounding errors visible in data
+
+```{r,echo=FALSE}
+kable(table(df_w_na$Bowl.Setpoint,dnn = "Bowl Setpoint"), digits = 2,'markdown', booktabs =T)
+kable(table(df_w_na$Pressure.Setpoint,dnn = "Pressure Setpoint"), digits = 2, 'markdown', booktabs =T,caption = "PRESSURE SETPOINT")
+kable(table(df_w_na$PSC.CO2,dnn = "PSC.CO2"), digits = 2, 'markdown',booktabs =T,caption = "PSC CO2")
+
+```
+
+<p style="font-family: times, serif; font-size:16pt; font-style:italic">**Rounding**</p> 
+
++ I rounded PSC.CO2 and Pressure.setpoint. I don't think these changes will make any difference in modeling results(all seem distributed evenly around the mean of PH)
+
+```{r,echo=FALSE}
+## ROund columns
+df$PSC.CO2 <- round(df$PSC.CO2,2)
+df$Pressure.Setpoint <- round(df$Pressure.Setpoint,0)
+
+## display rounded tables
+kable(table(df$PSC.CO2,dnn = "PSC.CO2"), digits = 2,'markdown', booktabs =T)
+kable(table(df$Pressure.Setpoint,dnn = "Pressure.Setpoint"), digits = 2,'markdown', booktabs =T)
+
+```
+
+
+<p style="font-family: times, serif; font-size:16pt; font-style:italic">**PSC.CO2 and Pressure.setpoint**</p> 
+
++ Scatterplots with new rounded off data
+
+```{r,echo=FALSE}
+## After rounding visualize Pressure.Setpoint
+ggplot(df, aes(Pressure.Setpoint, PH)) + 
+  geom_point()
+## After rounding visualize PSC.CO2
+ggplot(df, aes(PSC.CO2, PH)) + 
+  geom_point()
+```
+
+
+
+<p style="font-family: times, serif; font-size:16pt; font-style:italic">**Bowl.Setpoint predictor**</p> 
+
++ Setpoint seems to sequence by 10 integers, and then has random integers towards the end. I filtered
+ for those random observations to see any trend. I then visualize the variable.  I don't believe we need
+to make any changes to it
+
+```{r,echo=FALSE}
+df %>% 
+    filter(Bowl.Setpoint> 120 & Bowl.Setpoint <130) %>% 
+    dplyr::select(PH)
+ggplot(df, aes(Bowl.Setpoint, PH)) + 
+  geom_point()
+```
+
+
+
+```{r,eval=FALSE}
+kable(table(df$Bowl.Setpoint,dnn = "Bowl Setpoint"), digits = 2,'markdown', booktabs =T)
+kable(table(df$Pressure.Setpoint,dnn = "Pressure Setpoint"), digits = 2, 'markdown', booktabs =T,caption = "PRESSURE SETPOINT")
+kable(table(df$PSC.CO2,dnn = "PSC.CO2"), digits = 2, 'markdown',booktabs =T,caption = "PSC CO2")
+
+## After rounding visualize Pressure.Setpoint
+ggplot(df, aes(Pressure.Setpoint, PH)) + 
+  geom_point()
+## After rounding visualize PSC.CO2
+ggplot(df, aes(PSC.CO2, PH)) + 
+  geom_point()
+
+df %>% 
+    filter(Bowl.Setpoint> 120 & Bowl.Setpoint <130) %>% 
+    dplyr::select(PH)
+ggplot(df, aes(Bowl.Setpoint, PH)) + 
+  geom_point()
+
+df$PSC.CO2 <- round(df$PSC.CO2,2)
+## rounded new table for PSC CO2
+table(df$PSC.CO2)
+## rounded to integer new table for Pressure setpoint
+df$Pressure.Setpoint <- round(df$Pressure.Setpoint,0)
+table(df$Pressure.Setpoint)
+```
+
+
+
+
+### Imputation and Visualizing Missing Data
+
++ Imputation methods will eventually be handled by the Caret package, but I have visualized our missing data below
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+## missing values
+pMiss <- function(x){sum(is.na(x))/length(x)}
+apply(df,2,pMiss)
+aggr_plot <- aggr(df, col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE, labels=names(data), cex.axis=.7, gap=3, ylab=c("Histogram of missing data","Pattern"))
+
+```
+
+```{r,eval=FALSE}
+## missing values
+pMiss <- function(x){sum(is.na(x))/length(x)}
+apply(df,2,pMiss)
+aggr_plot <- aggr(df, col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE, labels=names(data), cex.axis=.7, gap=3, ylab=c("Histogram of missing data","Pattern"))
+#tempData <- mice(df,m=5,maxit=50,meth='pmm',seed=500)
+#summary(tempData)
+#completedData <- complete(tempData,1)
+#write.csv(completedData, file = "imputeddf.csv")
+#completedData <- read.csv("imputeddf.csv")
+#completedData <- completedData[,-1]
+```
+
+
+## Data Preparation {.tabset .tabset-fade}
+
+```{r,echo=FALSE}
+# Read in data
+train <- readxl::read_excel("train.xlsx",1)
+eval <- readxl::read_excel("test.xlsx",1)
+# eval
+```
+
+
+### One Hot encode 
+
+The variable `Brand Code` is a categorical variable, having 4 classes (A, B, C, and D). I opt to use the "one-hot" encoding scheme for this variable, creating 5 new variables for the data: BrandCodeA, BrandCodeB, BrandCodeC, BrandCodeD, and BrandCodeNA.
+
+```{r,echo=FALSE}
+# One-hot encoding the categorical variable `Brand Code`
+train$`Brand Code` <- addNA(train$`Brand Code`)
+eval$`Brand Code` <- addNA(eval$`Brand Code`)
+brandCodeTrain <- predict(dummyVars(~`Brand Code`, data=train), train)
+brandCodeEval <- predict(dummyVars(~`Brand Code`, data=eval), eval)
+
+
+
+kable(brandCodeTrain[1:10,],digits = 2,'markdown', booktabs =T)
+#head(train$`Brand Code`, 10)
+kable(brandCodeEval[1:10,],digits = 2,'markdown', booktabs =T)
+#head(eval$`Brand Code`, 10)
+train <- cbind(brandCodeTrain, subset(train, select=-c(`Brand Code`)))
+eval <- cbind(brandCodeEval, subset(eval, select=-c(`Brand Code`)))
+```
+
+```{r,eval=FALSE}
+# One-hot encoding the categorical variable `Brand Code`
+train$`Brand Code` <- addNA(train$`Brand Code`)
+eval$`Brand Code` <- addNA(eval$`Brand Code`)
+brandCodeTrain <- predict(dummyVars(~`Brand Code`, data=train), train)
+brandCodeEval <- predict(dummyVars(~`Brand Code`, data=eval), eval)
+
+kable(brandCodeTrain[1:10,],digits = 2,'markdown', booktabs =T)
+#head(train$`Brand Code`, 10)
+kable(brandCodeEval[1:10,],digits = 2,'markdown', booktabs =T)
+#head(eval$`Brand Code`, 10)
+train <- cbind(brandCodeTrain, subset(train, select=-c(`Brand Code`)))
+eval <- cbind(brandCodeEval, subset(eval, select=-c(`Brand Code`)))
+```
+
+### Clean Dataset
+
++ White spaces and special characters in the column names are removed so they do not cause issues in some of the R packages.
++ There are a few rows with target variable (PH) missing. These rows are removed, since they cannot be used for training.
++ Below, I remove the near-zero-variance predictor(Hydpressure1), and separate the predictors and target:
+
+```{r}
+# Remove special symbols (white space and `) in names
+names(train) <- gsub(patter=c(' |`'), replacement='', names(train))
+names(eval) <- gsub(patter=c(' |`'), replacement='', names(eval))
+
+# Remove rows in training set with missing target variables
+train <- train[complete.cases(train$PH),]
+
+# Check near-zero-variance variables
+nearZeroVar(train, names=T)
+
+# Separate the predictors and target, and remove nzv variable
+xTrain <- subset(train, select=-c(PH,`HydPressure1`)) %>% as.data.frame()
+xEval <- subset(eval, select=-c(PH,`HydPressure1`)) %>% as.data.frame()
+yTrain <- train$PH
+```
+
+
+
+## Modeling  {.tabset .tabset-fade}
+<p style="font-family: times, serif; font-size:16pt; font-style:italic">**Setting Train Parameters**</p>
+
+For the missing values, I experiment with three different imputation algorithms provided in the `preProcess` function:
+
+- KNN imputation
+- Bagged trees imputation
+- Median imputation
+
+As will be seen in the "Linear Models" section below, the choice of imputation method does not seem to affect the prediction performance much. I opt to use the `knnImpute` method due to its high efficiency.
+
+For the linear and non-linear models, the pre-processing step also include centering and scaling (standardizing), so that the variables all have a mean of 0 and standard deviation of 1. For the tree-based models, this step is omitted, since tree models work fine without this step.
+
+The `caret` package supports parallel processing (multi-core training). This capability significantly lowers the training time:
+
+
+
+
+
+### Code for Train paramaters
+
+
+```{r}
+
+set.seed(1)
+cvFolds <- createFolds(yTrain, k=5)
+trControl <- trainControl(verboseIter=T,
+                          method='cv', 
+                          number=5,
+                          index=cvFolds)
+
+# Set up and start multi-core processing
+cl <- makePSOCKcluster(5)
+registerDoParallel(cl)
+```
+
+
+### Linear Models
+
+In this section, I tune 6 models for the following purpose in mind:
+
++ Understand the effect of different imputation methods on the model performance
+
++ Find the optimal hyper-parameters for the respective linear models
+
+\n
+  
+<p style="font-family: times, serif; font-size:16pt; font-style:italic">**Setting Tuning Parameters**</p> 
+
++ For the partial least squares, the models are tuned over the number of components used in the model. 3 models are created, each uses a different imputation method:
+
++ For the elastic nets, the models are tuned over the two regularization parameters. Likewise, 3 models are tuned, each with different imputation method:
+
++ The performance of these models are be compared using the `resamples` function:
+
++ As you can see, the performance differences are very small among the different imputation methods. I opt to use the `knnImpute` method from this point on, due to its efficiency.
+
+```{r message=F,echo=F,warning=F}
+# PLS
+plsFit1 <- train(x=xTrain,
+                 y=yTrain, 
+                 method='pls',
+                 tuneLength=20,
+                 trControl=trControl,
+                 preProc=c('knnImpute', 'center', 'scale'))
+# plsFit2 <- train(x=xTrain,
+#                  y=yTrain, 
+#                  method='pls',
+#                  tuneLength=20,
+#                  trControl=trControl,
+#                  preProc=c('bagImpute', 'center', 'scale'))
+plsFit2 <- readRDS("plsFit2.rds")
+
+plsFit3 <- train(x=xTrain,
+                 y=yTrain, 
+                 method='pls',
+                 tuneLength=20,
+                 trControl=trControl,
+                 preProc=c('medianImpute', 'center', 'scale'))
+
+
+
+```
+
+
+
+```{r, message=F,echo=F,warning=F}
+# Elastic Net
+enetFit1 <- train(x=xTrain,
+                  y=yTrain,
+                  method='enet',
+                  tuneGrid=expand.grid(.fraction = seq(0, 1, by=0.1), 
+                                       .lambda = seq(0, 1, by=0.1)),
+                  trControl=trControl,
+                  preProc=c('knnImpute', 'center', 'scale'))
+# enetFit2 <- train(x=xTrain,
+#                   y=yTrain,
+#                   method='enet',
+#                   tuneGrid=expand.grid(.fraction = seq(0, 1, by=0.1), 
+#                                        .lambda = seq(0, 1, by=0.1)),
+#                   trControl=trControl,
+#                   preProc=c('bagImpute', 'center', 'scale'))
+enetFit2 <- readRDS("enetFit2.rds")
+
+enetFit3 <- train(x=xTrain,
+                  y=yTrain,
+                  method='enet',
+                  tuneGrid=expand.grid(.fraction = seq(0, 1, by=0.1), 
+                                       .lambda = seq(0, 1, by=0.1)),
+                  trControl=trControl,
+                  preProc=c('medianImpute', 'center', 'scale'))
+```
+
+
+<p style="font-family: times, serif; font-size:16pt; font-style:italic">**Summary Table**</p> 
+
+```{r,echo=F,message=F,warning=F}
+library(tidyverse)
+resamples(list(PLS1=plsFit1, PLS2=plsFit2, PLS3=plsFit3,
+               enet1=enetFit1, enet2=enetFit2, enet3=enetFit3)) %>% summary()
+```
+
+<p style="font-family: times, serif; font-size:16pt; font-style:italic">**Plot of PLS and Elastic Net**</p> 
+
+```{r,echo=F}
+
+# pls <- readRDS("pls.rds")
+# xgb2 <- readRDS("Models//xgb2.rds")
+
+plsFit <- plsFit1
+enetFit <- enetFit1
+plot(plsFit)
+plot(enetFit)
+```
+
+
+
+```{r,echo=F,warning=F}
+plsFit$finalModel
+enetFit$finalModel
+```
+
+
+```{r,eval=F}
+# PLS
+plsFit1 <- train(x=xTrain,
+                 y=yTrain, 
+                 method='pls',
+                 tuneLength=20,
+                 trControl=trControl,
+                 preProc=c('knnImpute', 'center', 'scale'))
+plsFit2 <- train(x=xTrain,
+                 y=yTrain,
+                 method='pls',
+                 tuneLength=20,
+                 trControl=trControl,
+                 preProc=c('bagImpute', 'center', 'scale'))
+## option to load in plsfit2 as pls impute takes time
+plsFit2 <- readRDS("plsFit2.rds")
+
+plsFit3 <- train(x=xTrain,
+                 y=yTrain, 
+                 method='pls',
+                 tuneLength=20,
+                 trControl=trControl,
+                 preProc=c('medianImpute', 'center', 'scale'))
+
+# Elastic Net
+enetFit1 <- train(x=xTrain,
+                  y=yTrain,
+                  method='enet',
+                  tuneGrid=expand.grid(.fraction = seq(0, 1, by=0.1), 
+                                       .lambda = seq(0, 1, by=0.1)),
+                  trControl=trControl,
+                  preProc=c('knnImpute', 'center', 'scale'))
+enetFit2 <- train(x=xTrain,
+                  y=yTrain,
+                  method='enet',
+                  tuneGrid=expand.grid(.fraction = seq(0, 1, by=0.1), 
+                                       .lambda = seq(0, 1, by=0.1)),
+                  trControl=trControl,
+                  preProc=c('bagImpute', 'center', 'scale'))
+## option to load in plsfit2 as enetfit2 impute takes time
+enetFit2 <- readRDS("enetFit2.rds")
+
+enetFit3 <- train(x=xTrain,
+                  y=yTrain,
+                  method='enet',
+                  tuneGrid=expand.grid(.fraction = seq(0, 1, by=0.1), 
+                                       .lambda = seq(0, 1, by=0.1)),
+                  trControl=trControl,
+                  preProc=c('medianImpute', 'center', 'scale'))
+
+## test results of impute methods
+resamples(list(PLS1=plsFit1, PLS2=plsFit2, PLS3=plsFit3,
+               enet1=enetFit1, enet2=enetFit2, enet3=enetFit3)) %>% summary()
+
+
+## plot and knnimpute models
+plsFit <- plsFit1
+enetFit <- enetFit1
+plot(plsFit)
+plot(enetFit)
+
+## final models
+plsFit$finalModel
+enetFit$finalModel
+```
+
+
+### Non-linear Models
+
++ For the KNN method, the model is tuned over the number of k-nearest neighbors used to make prediction:
++ For the support vector machine, I choose the radial basis kernel function. The hyper-parameters being tuned is the cost value. The scale parameter sigma is fixed and determined by the function analytically. 
+
+```{r echo=FALSE}
+knnFit <- readRDS("knn.rds")
+svmFit <- readRDS("svm.rds")
+```
+
+<p style="font-family: times, serif; font-size:16pt; font-style:italic">**Plot KNN Model**</p>
+
+```{r,echo=F}
+
+plot(knnFit)
+```
+
+<p style="font-family: times, serif; font-size:16pt; font-style:italic">**Plot SVM Model**</p>
+
+```{r,echo=FALSE}
+plot(svmFit)
+```
+
+
+<p style="font-family: times, serif; font-size:16pt; font-style:italic">**The final non-linear models are:**</p>
+
+
+```{r,echo=F}
+knnFit$finalModel
+svmFit$finalModel
+```
+
+
+```{r,eval=F}
+##load in model
+knnFit <- readRDS("knn.rds")
+## or create model
+knnFit <- train(x=xTrain,
+                y=yTrain,
+                method='knn',
+                tuneLength=20,
+                trControl=trControl,
+                preProc=c('knnImpute', 'center', 'scale'))
+## plot knn model
+plot(knnFit)
+
+
+## load in svm model
+svmFit <- readRDS("Models//svm.rds")
+
+# or create svm model
+svmFit <- train(x=xTrain,
+                y=yTrain,
+                method="svmRadial",
+                tuneLength=20,
+                trControl=trControl,
+                preProc=c('knnImpute', 'center', 'scale'))
+## plot svm model
+plot(svmFit)
+
+## final models 
+knnFit$finalModel
+svmFit$finalModel
+```
+
+
+
+
+
+### Tree-based Models
+
+<p style="font-family: times, serif; font-size:16pt; font-style:italic">**Random Forest:**</p>
+
++ For the Random Forest model, the `mtry` parameter, which is the number of randomly selected predictors in each tree, is tuned to obtain the optimal model. 
++ The `rf` implementation in R does not permit missing values, therefore `knnImpute` is used in the pre-processing step.
+
+
+```{r echo = FALSE}
+rf <- readRDS("rf.rds")
+plot(rf)
+```
+
+
+
+
+<p style="font-family: times, serif; font-size:16pt; font-style:italic">**XGBoost model:**</p>
+
+For the XGBoost model, below is a list of the parameters being tuned:
+
++ `nrounds` : boosting iterations (trees)
++ `max_depth` : max tree depth
++ `eta` : learning rate
++ `gamma` : minimum loss reduction
++ `colsample_bytree` : subsample ratio of columns
++ `min_child_weight` : minimum sum of instance weight
++ `subsample` : subsample ratio of rows
+
++ In addition, the XGBoost allows missing value in the data. Here, I experiment with both imputing the missing values (with `knnImpute`) and not imputing the missing values.
+    + It appears that the performance difference between imputing and not imputing are negligible. I opt to use the imputed model(XGB2) since it is a slight improvement and `knnImpute` does not take that much time to perform.
+
+```{r include = FALSE}
+xgb1 <- readRDS("xgb1.rds")
+xgb2 <- readRDS("xgb2.rds")
+```
+
+<p style="font-family: times, serif; font-size:16pt; font-style:italic">**XG Boost imputed(XGB2) versus non imputed(XBG1):**</p>
+
+```{r,echo=F}
+resamples(list(XGB1=xgb1, XGB2=xgb2)) %>% summary()
+```
+
+
+
+
+<p style="font-family: times, serif; font-size:16pt; font-style:italic">**The final tree-based models are:**</p>
+
+
+
+```{r,echo=F}
+rf
+xgb <- xgb2
+xgb$finalModel
+```
+
+```{r,eval=F}
+## Load rf model
+rf <- readRDS("Models//rf.rds")
+
+# Or create Random Forest
+rf <- train(x=xTrain, 
+            y=yTrain, 
+            method='rf',
+            tuneLength=10,
+            trControl=trControl,
+            preProc=c('knnImpute'), 
+            importance=T)
+# plot RF model
+plot(rf)
+
+##load models 
+xgb1 <- readRDS("Models//xgb1.rds")
+xgb2 <- readRDS("Models//xgb2.rds")
+
+# XGBoost
+xgbGrid <- expand.grid(.nrounds=c(100, 500, 1000, 1500), # boosting iterations (trees)
+                       .max_depth=c(4, 6, 8, 10), # max tree depth
+                       .eta=c(0.001, 0.01, 0.1, 0.5), # learning rate
+                       .gamma=c(0),# minimum loss reduction
+                       .colsample_bytree=c(0.4, 0.6, 0.8, 1), # subsample ratio of columns
+                       .min_child_weight=c(1, 5, 15), # minimum sum of instance weight
+                       .subsample=c(0.5, 0.75, 1))  # subsample ratio of rows
+xgb1 <- train(x = xTrain,
+              y = yTrain,
+              method = 'xgbTree',
+              tuneGrid = xgbGrid,
+              trControl = trControl)
+xgb2 <- train(x = xTrain,
+              y = yTrain,
+              method = 'xgbTree',
+              tuneGrid = xgbGrid,
+              trControl = trControl,
+              preProce = c('knnImpute'))
+# End multi-core processing
+stopCluster(cl)
+registerDoSEQ()
+# resample
+resamples(list(XGB1=xgb1, XGB2=xgb2)) %>% summary()
+
+## final models 
+rf
+xgb <- xgb2
+xgb$finalModel
+plot(xgb$finalModel)
+```
+
+
+### Model Evaluation and Comparison
+
+<p style="font-family: times, serif; font-size:18pt; font-style:italic">**Variable Importance:**</p>
+
+
+Following models have their model-specific variable importance:
+
+- Partial Least Square
+- Random Forest
+- Xgboost
+
+For other models, the default action in `caret` is to evaluate the variable importance based on loess smoother fit between the target and the predictors (see https://topepo.github.io/caret/variable-importance.html). 
+
+Blow, the ranking of variables are calculated and tabulate below. As can be seen, the variable importance calculated for elastic net, KNN, and SVM are the same, since they do not have model-specific method, and are all calculated based on loess R-squares.
+
+<p style="font-family: times, serif; font-size:18pt; font-style:italic">**Variable Importance df:**</p>
+
+```{r warning=F,echo=F}
+getRank <- function(trainObjects){
+  temp <- c()
+  methods <- c()
+  for(object in trainObjects){
+    methods <- c(methods, object$method)
+    varimp <- varImp(object)[[1]]
+    varimp$variables <- row.names(varimp)
+    rank <- varimp[order(varimp$Overall, decreasing = T),] %>% row.names()
+    temp <- cbind(temp, rank)
+    
+  }
+  temp <- as.data.frame(temp)
+  names(temp) <- methods
+  temp$Rank <- c(1:dim(temp)[1])
+  temp <- select(temp, Rank, everything())
+  return(temp)
+}
+
+
+kable(getRank(list(plsFit, rf, xgb, enetFit, knnFit, svmFit)),digits = 2,'markdown', booktabs =T)
+```
+
+<p style="font-family: times, serif; font-size:18pt; font-style:italic">**Variable Importance plots:**</p>
+
+```{r,echo=FALSE}
+plot(varImp(plsFit), main='Variable Importance based on PLS')
+plot(varImp(rf), main='Variable Importance based on Random Forest')
+plot(varImp(xgb), main='Variable Importance based on XGBoost')
+plot(varImp(svmFit), main='Variable Importance based on Loess R-Squares')
+```
+
+
+<p style="font-family: times, serif; font-size:18pt; font-style:italic">**Model Performance:**</p>
+
+The models' performance are listed below:
+
++ It can be seen that the XGBoost model achieves better performance. 
+    + It has the lowest average RMSE. Based on this, I opt to choose the XGBoost model as our final models.
+
+```{r,echo=F}
+resamples(list(PLS=plsFit, ENet=enetFit, KNN=knnFit, SVM=svmFit, RF=rf, XGB=xgb)) %>% summary()
+```
+
+<p style="font-family: times, serif; font-size:18pt; font-style:italic">**Boxplots for CV performance:**</p>
+
++ Below are the boxplots of the RMSE in the CV folds for the models. 
++ It can be seen that the linear models have very tight spread in their RMSE, while the non-linear and the tree-based models have higher spread.
+    + This means that linear models have lower variance than the non-linear and tree-based models. 
+    + It makes sense since non-linear models and tree-based models are in general more powerful than the linear models, and therefore prompt to overfit (high variance, low bias).
+
+```{r,echo=FALSE}
+par(mfrow=c(2,3))
+boxplot(plsFit$resample$RMSE, main='CV RMSE for PLS')
+boxplot(enetFit$resample$RMSE, main='CV RMSE for ENet')
+boxplot(knnFit$resample$RMSE, main='CV RMSE for KNN')
+boxplot(svmFit$resample$RMSE, main='CV RMSE for SVM')
+boxplot(rf$resample$RMSE, main='CV RMSE for RF')
+boxplot(xgb$resample$RMSE, main='CV RMSE for XGB')
+```
+
+
+
+
+```{r,eval=F}
+
+## custom function to rank variable importance
+getRank <- function(trainObjects){
+  temp <- c()
+  methods <- c()
+  for(object in trainObjects){
+    methods <- c(methods, object$method)
+    varimp <- varImp(object)[[1]]
+    varimp$variables <- row.names(varimp)
+    rank <- varimp[order(varimp$Overall, decreasing = T),] %>% row.names()
+    temp <- cbind(temp, rank)
+    
+  }
+  temp <- as.data.frame(temp)
+  names(temp) <- methods
+  temp$Rank <- c(1:dim(temp)[1])
+  temp <- select(temp, Rank, everything())
+  return(temp)
+}
+
+## print out ofvarIMp from custom function
+kable(getRank(list(plsFit, rf, xgb, enetFit, knnFit, svmFit)),digits = 2,'markdown', booktabs =T)
+
+## plot varImp for all models 
+plot(varImp(plsFit), main='Variable Importance based on PLS')
+plot(varImp(rf), main='Variable Importance based on Random Forest')
+plot(varImp(xgb), main='Variable Importance based on XGBoost')
+plot(varImp(svmFit), main='Variable Importance based on Loess R-Squares')
+
+## summary of model scores 
+resamples(list(PLS=plsFit, ENet=enetFit, KNN=knnFit, SVM=svmFit, RF=rf, XGB=xgb)) %>% summary()
+
+## boxplots for cv scores
+par(mfrow=c(2,3))
+boxplot(plsFit$resample$RMSE, main='CV RMSE for PLS')
+boxplot(enetFit$resample$RMSE, main='CV RMSE for ENet')
+boxplot(knnFit$resample$RMSE, main='CV RMSE for KNN')
+boxplot(svmFit$resample$RMSE, main='CV RMSE for SVM')
+boxplot(rf$resample$RMSE, main='CV RMSE for RF')
+boxplot(xgb$resample$RMSE, main='CV RMSE for XGB')
+
+## Make predictions
+(pred <- predict(xgb, newdata=xEval))
+eval$PH <- pred
+write.csv(eval, "StudentEvaluation_PH_PREDICTED.csv", row.names=FALSE)
+
+```
+
+
+### Eval Set Prediction
+
+Below, I make the prediction using the XGB model, and save the result:
+
+```{r}
+(pred <- predict(xgb, newdata=xEval))
+eval$PH <- pred
+write.csv(eval, "StudentEvaluation_PH_PREDICTED.csv", row.names=FALSE)
+```
+
