@@ -11,7 +11,7 @@
   + Use Spacy NER to map relationships in Game of Thrones
   
 **EDA and Visualization**
-+ [2016_Presidential_Election_exploration (R)] (http://rpubs.com/justin_herman_42/457852)
++ [2016_Presidential_Election_exploration (R)](http://rpubs.com/justin_herman_42/457852)
   + Visualize county level demographic results from the 2016 presidential election 
   
 **Data Manipulation**
