@@ -38,7 +38,10 @@ for full code, please see section below
 <br>
 
 [NYT web scrape via times API](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/New_York_times_webscrape) 
+
 + Basic look at the term domestic terrorism with some visualization from api results
+<br>
+
 RegEx](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/Regex_data_cleanup)
 + A couple of regex scripts to manipulate data 
 <br>
