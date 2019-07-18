@@ -18,7 +18,7 @@
 + [Create Custom Poker HUD (R)](https://rpubs.com/justin_herman_42/385739)
   + Access sql db, create custom statistics, insert statistics into xml file.
 
-+[Build blockchain object project (python)] (https://github.com/justinherman42/Data_Science_Projects/blob/master/Python/Build%20Blockchain/Blockchain.py)
++ [Build blockchain object project (python)](https://github.com/justinherman42/Data_Science_Projects/blob/master/Python/Build%20Blockchain/Blockchain.py)
   + project to simulate a simple secure blockchain object based on hash values  
 
 # Below links bring you to github readme for each project
