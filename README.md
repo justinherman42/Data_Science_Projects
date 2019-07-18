@@ -1,4 +1,4 @@
-# Direct links to interesting projects(for full code, please see section below) 
+#  Links to interesting projects(for full code, please see section below) 
 
 **EDA-Prediction Pipeline**
 + [Predicting PH levels(R)](https://rpubs.com/justin_herman_42/497179)
@@ -6,18 +6,14 @@
 **NLP**
 + [Game_Of_Thrones_NLP_Network_Analysis(python)](https://nbviewer.jupyter.org/github/justinherman42/Data_Science_Projects/blob/master/Python/Game_Of_Thrones__NLP_Network_Analysis/Game_of_Thrones_NER.ipynb)
 
-  
 **EDA and Visualization**
 + [2016_Presidential_Election_exploration (R)](http://rpubs.com/justin_herman_42/457852)
-  + Visualize county level demographic results from the 2016 presidential election 
   
 **Data Manipulation**
 + [Create Custom Poker HUD (R)](https://rpubs.com/justin_herman_42/385739)
-
 + [Build blockchain object project (python)](https://github.com/justinherman42/Data_Science_Projects/blob/master/Python/Build%20Blockchain/Blockchain.py)
 
-
-# Full documented code for each project
+# Full documented code for all projects
 ## R based projects
   + [Predicting PH levels](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/Predicting_PH_levels) 
     + prediction for a business scenario wherein a company wants to understand it's manufacturing process
@@ -53,7 +49,7 @@
       + Deals with user input and records data input locally into both user files and a Masterfile
   + [Build blockchain object project](https://github.com/justinherman42/Data_Science_Projects/tree/master/Python/Build%20Blockchain)
 
-## Stat projects
+## Statistics projects
   + [Poisson distribution experimentation](https://github.com/justinherman42/Data_Science_Projects/tree/master/Math_Statistics/Applying_poisson) 
     + Answer simple math question via simulation and Poisson distribution
   + [Building matrix inverse function via adjoint method](https://github.com/justinherman42/Data_Science_Projects/tree/master/Math_Statistics/Matrix_inverse_function)
