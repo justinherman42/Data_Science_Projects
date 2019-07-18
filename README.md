@@ -36,6 +36,7 @@ for full code, please see section below
 [Linear Regression models for poker win rate](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/Build_Linear_Regression_Model_For_Poker_Winrate) 
 + Basic exploration to find a regression model for poker win rate
 <br>
+
 [NYT web scrape via times API](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/New_York_times_webscrape) 
 + Basic look at the term domestic terrorism with some visualization from api results
 RegEx](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/Regex_data_cleanup)
@@ -50,24 +51,31 @@ RegEx](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/Reg
 
 [Seasonality trends with dplyr and stlplus](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/Seasonality%20trends%20with%20dplyr%20and%20stlplus)
 + Exploring the stlplus package
+
+
+## Python projects
  
- ## Python projects
 [Game_Of_Thrones__NLP_Network_Analysis](https://github.com/justinherman42/Data_Science_Projects/blob/master/Python/Game_Of_Thrones__NLP_Network_Analysis/Game_of_Thrones_NER.ipynb) 
 + Project uses Spacy NER to develop graphical relationships based on contact and sentiment of characters in the popular book series by George R Martin
 <br>
+
 [MNIST_Nueral_Network](https://github.com/justinherman42/Data_Science_Projects/tree/master/Python/Mnist_dataset_Neural_Network_from_scratch)
 + Develop a NN from scratch and apply it to SoftMax classification of MNIST dataset
 <br>
+
 [Data Pipeline with random forest model for titanic survival Dataset](https://github.com/justinherman42/Data_Science_Projects/tree/master/Python/Titanic_Survival_Pipeline)
 + Project is built to be run locally from command prompt
 <br>
+
 [Cloud VM](https://github.com/justinherman42/Data_Science_Projects/tree/master/Python/Cloud_VM) 
 + Transfers titanic model onto VM and writes/ reads results from cloud buckets 
 <br>
+
 [gym app to track powerlifting workouts](https://github.com/justinherman42/Data_Science_Projects/tree/master/Python/gym%20app)
 + Project is incomplete  
 + Deals with user input and records data input locally into both user files and a Masterfile
 <br>
+
 [Build blockchain object project](https://github.com/justinherman42/Data_Science_Projects/tree/master/Python/Build%20Blockchain)
 
 ## Statistics projects
