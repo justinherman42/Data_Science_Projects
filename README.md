@@ -1,17 +1,23 @@
 # Direct links to interesting projects(for full code, please see github folders section below) 
 
 **EDA-Prediction Pipeline**
+
 + [Predicting PH levels(R)](https://rpubs.com/justin_herman_42/497179)
   + Technical and non technical writeup on optimizing manufactoring process
+  
 **NLP**
+
 + [Game_Of_Thrones_NLP_Network_Analysis(python)](https://nbviewer.jupyter.org/github/justinherman42/Data_Science_Projects/blob/master/Python/Game_Of_Thrones__NLP_Network_Analysis/Game_of_Thrones_NER.ipynb)
   + Use Spacy NER to map relationships in Game of Thrones
+  
 **EDA and Visualization**
 + [2016_Presidential_Election_exploration (R)] (http://rpubs.com/justin_herman_42/457852)
   + Visualize county level demographic results from the 2016 presidential election 
+  
 **Data Manipulation**
 + [Create Custom Poker HUD (R)](https://rpubs.com/justin_herman_42/385739)
   + Access sql db, create custom statistics, insert statistics into xml file.
+
 +[Build blockchain object project (python)] (https://github.com/justinherman42/Data_Science_Projects/blob/master/Python/Build%20Blockchain/Blockchain.py)
   + project to simulate a simple secure blockchain object based on hash values  
 
@@ -26,7 +32,6 @@
       + Part 1 investigates IMDB ratings
       + Part 2 investigates Tuberculosis and other diseases across nations
       + Part 3 investigates correlations between food insecurity and government expenditures 
-    + Regex projects
   + [Seasonality trends with dplyr and stlplus](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/Seasonality%20trends%20with%20dplyr%20and%20stlplus)
   + [Predicting PH levels](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/Predicting_PH_levels) -
   + EDA-->prediction for a business scenario wherein a company wants to understand it's manufacturing process
