@@ -27,10 +27,12 @@ for full code, please see section below
 
 + Explores social and economic factors from county level 2016 election results
 <br>
+
 [Develop Program to create Custom poker statistics](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/Build_Custom_Poker_Statistics_Software) 
 
 + Custom stat insertion program from SQL-XML file
 <br>
+
 [Linear Regression models for poker win rate](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/Build_Linear_Regression_Model_For_Poker_Winrate) 
 + Basic exploration to find a regression model for poker win rate
 <br>
@@ -39,11 +41,13 @@ for full code, please see section below
 RegEx](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/Regex_data_cleanup)
 + A couple of regex scripts to manipulate data 
 <br>
+
 [General Data manipulation/visualization project file](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/General_Data_manipulation)
 + Part 1 investigates IMDB ratings 
 + Part 2 investigates Tuberculosis and other diseases across nations 
 + Part 3 investigates correlations between food insecurity and government expenditures(Old project circa 2017) 
 <br>
+
 [Seasonality trends with dplyr and stlplus](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/Seasonality%20trends%20with%20dplyr%20and%20stlplus)
 + Exploring the stlplus package
  
