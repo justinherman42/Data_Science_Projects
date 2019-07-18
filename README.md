@@ -83,10 +83,10 @@ for full code, please see section below
 [Build blockchain object project](https://github.com/justinherman42/Data_Science_Projects/tree/master/Python/Build%20Blockchain)
 
 ## Statistics projects
-+ [Poisson distribution experimentation](https://github.com/justinherman42/Data_Science_Projects/tree/master/Math_Statistics/Applying_poisson) 
-  +  <span style="color:black">Answer simple math question via simulation and Poisson distribution</span>
-+ [Building matrix inverse function via adjoint method](https://github.com/justinherman42/Data_Science_Projects/tree/master/Math_Statistics/Matrix_inverse_function)
-+ [Build N fold convolution function](https://github.com/justinherman42/Data_Science_Projects/tree/master/Math_Statistics/Nfold_convolution_function)
-  +  <span style="color:black">Function is applied to determine likelihood of hits in a baseball playoff series and career, given prob distribution for at bats</span>
-+ [Simulation and Markov methods](https://github.com/justinherman42/Data_Science_Projects/tree/master/Math_Statistics/Simulation_and_Markov)
-  +  <span style="color:black">Solves optimal gambling strategy problem</span>
+[Poisson distribution experimentation](https://github.com/justinherman42/Data_Science_Projects/tree/master/Math_Statistics/Applying_poisson) 
++  <span style="color:black">Answer simple math question via simulation and Poisson distribution</span>
+[Building matrix inverse function via adjoint method](https://github.com/justinherman42/Data_Science_Projects/tree/master/Math_Statistics/Matrix_inverse_function)
+[Build N fold convolution function](https://github.com/justinherman42/Data_Science_Projects/tree/master/Math_Statistics/Nfold_convolution_function)
++  <span style="color:black">Function is applied to determine likelihood of hits in a baseball playoff series and career, given prob distribution for at bats</span>
+[Simulation and Markov methods](https://github.com/justinherman42/Data_Science_Projects/tree/master/Math_Statistics/Simulation_and_Markov)
++  <span style="color:black">Solves optimal gambling strategy problem</span>
