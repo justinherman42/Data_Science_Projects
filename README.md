@@ -22,6 +22,7 @@ for full code, please see section below
 
 + Prediction for a business scenario wherein a company wants to understand it's manufacturing process. Technical and non technical writeup included
 <br>
+
 [2016_Presidential_Election_exploration](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/2016_CountyLevel_Election_Data) 
 
 + Explores social and economic factors from county level 2016 election results
