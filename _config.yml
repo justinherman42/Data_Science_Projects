@@ -22,4 +22,5 @@ description: > # your text below (remove <br> elements if you don't need line br
   <a href="https://www.linkedin.com/in/justin-herman-3930b817b/">View My LinkedIn Profile</a> 
   
 theme: jekyll-theme-minimal
+skin: night
 google_analytics: UA-000000-0 # your Google Analytics tracking ID here
