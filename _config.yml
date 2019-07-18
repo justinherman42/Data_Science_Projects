@@ -1,7 +1,7 @@
 title: Justin Herman
 logo: "/images/profile_pic.jpg?raw=true" # your photo (or logo) here
 description: > # your text below (remove <br> elements if you don't need line breaks)
-  ** About me:** 
+  **About me:** 
   <br>
   I am currently entering into the last semester of my Master in Data Science program <br> 
   I have been a profesional poker player since sophmore year of college. Poker has given me an amazing oppurtunity 
@@ -13,7 +13,7 @@ description: > # your text below (remove <br> elements if you don't need line br
   <br>
   R,Python,SQL
   <br>
-  **Skills** 
+  <b>Skills<b>
   <br>
   Data exploration, Data Manipulation, Data Modeling, Supervised and Unsupervised Learning<br>
   <br>
