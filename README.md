@@ -1,3 +1,7 @@
+p {
+ color: black;
+}
+
 # Interesting projects<br>
 for full code, please see section below
 
