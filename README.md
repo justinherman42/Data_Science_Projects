@@ -20,7 +20,7 @@ for full code, please see section below
 
 [Predicting PH levels](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/Predicting_PH_levels) 
 
-+ Prediction for a business scenario wherein a company wants to understand it's manufacturing process. Technical and non technical writeup included
++ <span style="color:blue">Prediction for a business scenario wherein a company wants to understand it's manufacturing process. Technical and non technical writeup included</span>
 <br>
 
 [2016_Presidential_Election_exploration](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/2016_CountyLevel_Election_Data) 
