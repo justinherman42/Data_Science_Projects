@@ -3,13 +3,19 @@ logo: "/images/profile_pic.jpg?raw=true" # your photo (or logo) here
 description: > # your text below (remove <br> elements if you don't need line breaks)
   First description 
   <br>
-My name is Justin Herman and I am currently entering into the last semester of my Master in Data Science program at CUNY School of Professional Studies. I have been a profesional poker player since sophmore year of college. Poker has given me an amazing oppurtunity to make a living in an area that most people can only envision as a hobby. I am pasisonate about data and love the oppurtunity that data science presents for the future.<br>
+  I am currently entering into the last semester of my Master in Data Science program <br> 
+  at CUNY School of Professional Studies. I have been a profesional poker player since <br> 
+  sophmore year of college. Poker has given me an amazing oppurtunity to make a living in <br>
+  an area that most people can only envision as a hobby. I am pasisonate about data and love <br> 
+  the oppurtunity that data science presents for the future.<br>
   Languages
   <br>R,Python,SQL<br>
-  feilds
-  <br>Data exploration,Data Manipulation, Data Modeling, Supervised and Unsupervised Learning,Time Series,NLP, <br>
-  Languages
-  <br>R,Python,SQL<br>
+  Skills<br>
+  Data exploration, Data Manipulation, Data Modeling, Supervised and Unsupervised Learning<br>
+  <br>
+  Topics of Interest
+  Time Series, NLP, Predictive Modeling
+  <br>
   <a href="https://www.linkedin.com/in/justin-herman-3930b817b/">View My LinkedIn Profile</a> 
   
 theme: jekyll-theme-minimal
