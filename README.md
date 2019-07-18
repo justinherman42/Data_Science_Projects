@@ -1,5 +1,5 @@
 # Interesting projects<br>
-for full code, please see section below
+Full code in section below
 
 **EDA-Prediction Pipeline**
 + [Predicting PH levels(R)](https://rpubs.com/justin_herman_42/497179)
