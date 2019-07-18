@@ -1,7 +1,3 @@
-html,section {
-background-color:rgba(154, 130, 139, 0.77);
-}
-
 title: Justin Herman
 logo: "/images/profile_pic.jpg?raw=true" # your photo (or logo) here
 description: > # your text below (remove <br> elements if you don't need line breaks)
