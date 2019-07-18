@@ -1,9 +1,3 @@
-
-
-
-
-# Data_Science_Projects
-
 ## Direct link to recent example of EDA-prediction pipeline
 + [Predicting PH levels](https://rpubs.com/justin_herman_42/497179)
 
