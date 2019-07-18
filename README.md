@@ -20,13 +20,14 @@ for full code, please see section below
 
 # Full documented code for all projects
 ## R based projects
+
 + [Predicting PH levels](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/Predicting_PH_levels) 
- + prediction for a business scenario wherein a company wants to understand it's manufacturing process
- + Technical and non technical writeup included
+  + prediction for a business scenario wherein a company wants to understand it's manufacturing process
+  + Technical and non technical writeup included
 + [2016_Presidential_Election_exploration](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/2016_CountyLevel_Election_Data) 
- + Explores social and economic factors from county level 2016 election results
+  + Explores social and economic factors from county level 2016 election results
 + [Develop Program to create Custom poker statistics](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/Build_Custom_Poker_Statistics_Software) 
- + Custom stat insertion program from SQL-XML file
+  + Custom stat insertion program from SQL-XML file
 + [Linear Regression models for poker win rate](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/Build_Linear_Regression_Model_For_Poker_Winrate) 
   + Basic exploration to find a regression model for poker win rate
 + [NYT web scrape via times API](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/New_York_times_webscrape) 
