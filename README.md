@@ -17,7 +17,7 @@
   + **Seasonality trends with dplyr and stlplus**
   + **Predicting PH levels** EDA-->prediction for a business scenario wherein a company wants to understand it's manufacturing process
 ## Python projects
-  + **Game_Of_Thrones__NLP_Network_Analysis**-[https://github.com/justinherman42/Data_Science_Projects/blob/master/Python/Game_Of_Thrones__NLP_Network_Analysis/Game_of_Thrones_NER.ipynb] project uses Spacy NER to develop graphical relationships based on contact and sentiment of characters in the popular book series by Goerge R Martin
+  + [**Game_Of_Thrones__NLP_Network_Analysis**](https://github.com/justinherman42/Data_Science_Projects/blob/master/Python/Game_Of_Thrones__NLP_Network_Analysis/Game_of_Thrones_NER.ipynb) project uses Spacy NER to develop graphical relationships based on contact and sentiment of characters in the popular book series by Goerge R Martin
   + **Data Pipeline with random forest model for titanic survival Dataset** - project is built to be run locally from command prompt
   + **MNIST_Nueral_Network**- develop a NN from scratch and apply it to SoftMax classification of MNIST dataset
   + **Cloud VM**- transfers titanic model onto VM and writes/ reads results from cloud buckets 
