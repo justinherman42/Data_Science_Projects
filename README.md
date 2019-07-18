@@ -47,9 +47,11 @@ RegEx](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/Reg
 <br>
 
 [General Data manipulation/visualization project file](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/General_Data_manipulation)
+<span style="color:blue">
 + Part 1 investigates IMDB ratings 
 + Part 2 investigates Tuberculosis and other diseases across nations 
 + Part 3 investigates correlations between food insecurity and government expenditures(Old project circa 2017) 
+</span>
 <br>
 
 [Seasonality trends with dplyr and stlplus](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/Seasonality%20trends%20with%20dplyr%20and%20stlplus)
