@@ -1,4 +1,4 @@
-#  Links to interesting projects(for full code, please see section below) 
+# Interesting projects(for full code, please see section below) 
 
 **EDA-Prediction Pipeline**
 + [Predicting PH levels(R)](https://rpubs.com/justin_herman_42/497179)
@@ -36,6 +36,7 @@
     + Exploring the stlplus package
  
  ## Python projects
+ 
   + [Game_Of_Thrones__NLP_Network_Analysis](https://github.com/justinherman42/Data_Science_Projects/blob/master/Python/Game_Of_Thrones__NLP_Network_Analysis/Game_of_Thrones_NER.ipynb) 
     + Project uses Spacy NER to develop graphical relationships based on contact and sentiment of characters in the popular book series by George R Martin
   + [MNIST_Nueral_Network](https://github.com/justinherman42/Data_Science_Projects/tree/master/Python/Mnist_dataset_Neural_Network_from_scratch)
