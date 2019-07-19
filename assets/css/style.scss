@@ -14,3 +14,9 @@ p {
 
 li {color: red;}
 li > span {color: black;}
+
+<style>h1{text-transform: capitalize}</style>
+<style>h2{text-transform: capitalize}</style>
+<style>h3{text-transform: capitalize}</style>
+<style>p:first-letter {text-transform: capitalize}</style>
+<style>li:first-letter {text-transform: capitalize}</style>
