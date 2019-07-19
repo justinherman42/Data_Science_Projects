@@ -11,3 +11,6 @@ body {
 p {
  color: black;
 }
+
+li {color: red;}
+li > span {color: black;}
