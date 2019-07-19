@@ -5,14 +5,6 @@
 body {
     background: #000000
 }
-body:after {
-    content:'';
-    position: fixed;
-    height: 100%;
-    width: 50%;
-    left: 50%;
-    background: #116699
-}
 p {
  color: black;
 }
