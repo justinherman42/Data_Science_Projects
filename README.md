@@ -20,17 +20,17 @@ Full code in section below
 
 [Predicting PH levels](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/Predicting_PH_levels) 
 
-+ Prediction for a business scenario wherein a company wants to understand it's manufacturing process. Technical and non technical writeup included
++ <span style="color:black">Prediction for a business scenario wherein a company wants to understand it's manufacturing process. Technical and non technical writeup included</span>
 <br>
 
 [2016_Presidential_Election_exploration](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/2016_CountyLevel_Election_Data) 
 
-+  Explores social and economic factors from county level 2016 election results
++  <span style="color:black">Explores social and economic factors from county level 2016 election results</span>
 <br>
 
 [Develop Program to create Custom poker statistics](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/Build_Custom_Poker_Statistics_Software) 
 
-+  Custom stat insertion program from SQL-XML file
++  <span style="color:black">Custom stat insertion program from SQL-XML file</span>
 <br>
 
 [Linear Regression models for poker win rate](https://github.com/justinherman42/Data_Science_Projects/tree/master/R/Build_Linear_Regression_Model_For_Poker_Winrate) 
