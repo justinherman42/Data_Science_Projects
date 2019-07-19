@@ -3,17 +3,16 @@
 @import "jekyll-theme-minimal";
 
 body {
-   background: linear-gradient(to bottom, white, PaleTurquoise);
-        color: white;
+    background: #000000
 }
-
-p {
- color: black;
+body:after {
+    content:'';
+    position: fixed;
+    height: 100%;
+    width: 50%;
+    left: 50%;
+    background: #116699
 }
-
-}
-}
-
 p {
  color: black;
 }
