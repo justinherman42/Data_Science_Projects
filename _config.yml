@@ -12,13 +12,14 @@ description: > # your text below (remove <br> elements if you don't need line br
   <br>  <br>
   <b>Skills</b>
   <br>
-  Data exploration, Data Manipulation, Data Modeling, Supervised and Unsupervised Learning<br>
+  Data exploration, Data Manipulation, Data Modeling, Supervised and Unsupervised Learning
   <br>  <br>
   <b>Topics of Interest</b>
   <br>
   Time Series, NLP, Predictive Modeling
   <br>
   <br>
+  <b>LinkedIn</b>
   <a href="https://www.linkedin.com/in/justin-herman-3930b817b/">View My LinkedIn Profile</a> 
   
 theme: "jekyll-theme-minimal"
