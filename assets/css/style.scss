@@ -3,8 +3,10 @@
 @import "jekyll-theme-minimal";
 
 body {
-    background: #000000
+    background: linear-gradient(to bottom, white, PaleTurquoise);
+        color: white;
 }
+
 p {
  color: black;
 }
