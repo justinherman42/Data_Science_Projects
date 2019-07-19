@@ -3,8 +3,7 @@
 @import "jekyll-theme-minimal";
 
 body {
-    background: linear-gradient(to bottom, white, PaleTurquoise);
-        color: white;
+    .splitpane_divider { background-color: red !important; };
 }
 
 p {
