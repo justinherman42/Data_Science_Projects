@@ -2,12 +2,8 @@
 ---
 @import "jekyll-theme-minimal";
 
-html {
-    height: 100%;
-    background-color: cyan;
-}
-
 body {
+    background-color: cyan;
     height: 100%;
     background-image: url('http://i.imgur.com/9HMnxKs.png');
     background-repeat: repeat-y;
