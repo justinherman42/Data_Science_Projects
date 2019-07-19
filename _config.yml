@@ -19,8 +19,9 @@ description: > # your text below (remove <br> elements if you don't need line br
   Time Series, NLP, Predictive Modeling
   <br>
   <br>
-  <b>LinkedIn</b>
+  <b>LinkedIn</b><br>
   <a href="https://www.linkedin.com/in/justin-herman-3930b817b/">View My LinkedIn Profile</a> 
+  <b>GitHub</b><br>
   
 theme: "jekyll-theme-minimal"
 minimal_mistakes_skin: 'dark'
