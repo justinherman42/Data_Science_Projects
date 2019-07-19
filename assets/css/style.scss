@@ -4,7 +4,7 @@
 @import "jekyll-theme-minimal";
 
 body {
-  background-image: url("https://lawrencecheng123.github.io/Seattle.jpg")
+  background: linear-gradient(to bottom, black 0%,black 50%,#000000 50%,white 50%,white 100%); /* W3C */
 }
 
 p {
