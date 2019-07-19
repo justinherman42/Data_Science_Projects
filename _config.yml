@@ -20,7 +20,7 @@ description: > # your text below (remove <br> elements if you don't need line br
   <br>
   <br>
   <b>LinkedIn</b><br><br>
-  <a href="https://www.linkedin.com/in/justin-herman-3930b817b/">View My LinkedIn Profile</a> <br>
+  <a href="https://www.linkedin.com/in/justin-herman-3930b817b/">View My LinkedIn Profile</a> <br><br>
   <b>GitHub</b>
   
 theme: "jekyll-theme-minimal"
