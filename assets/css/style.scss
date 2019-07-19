@@ -3,8 +3,13 @@
 @import "jekyll-theme-minimal";
 
 body {
-   background: linear-gradient(to bottom, white, PaleTurquoise);
-        color: white;
+   .abWhiteAndBlack
+{
+  background-image: linear-gradient(90deg, black 50%, blue 50%);
+  height: 300px;
+  width: 300px;
+  margin-bottom: 80px;
+}
 }
 
 p {
