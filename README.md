@@ -19,8 +19,11 @@ Full code in section below
  
 **Data Manipulation**
 + [Create Custom Poker HUD (R)](https://rpubs.com/justin_herman_42/385739)
-+ [Build blockchain object project (Python)](https://github.com/justinherman42/Data_Science_Projects/blob/master/Python/Build%20Blockchain/Blockchain.py)
+ [![Foo](pokerhud_tn.jpg)](https://rpubs.com/justin_herman_42/385739)
 
++ [Build blockchain object project (Python)](https://github.com/justinherman42/Data_Science_Projects/blob/master/Python/Build%20Blockchain/Blockchain.py)
+ [![Foo](blockchain_tn.jpg)](https://rpubs.com/justin_herman_42/385739)
+ 
 # Full documented code for all projects
 
 ## R Projects
