@@ -4,6 +4,8 @@ Full code in section below
 **EDA-Prediction Pipeline**
 + [Predicting PH levels(R)](https://rpubs.com/justin_herman_42/497179)
 
+[![Foo](man_process_tn.jpg)](https://rpubs.com/justin_herman_42/497179)
+
 **NLP**
 + [Game_Of_Thrones_NLP_Network_Analysis(Python)](https://nbviewer.jupyter.org/github/justinherman42/Data_Science_Projects/blob/master/Python/Game_Of_Thrones__NLP_Network_Analysis/Game_of_Thrones_NER.ipynb)
 
