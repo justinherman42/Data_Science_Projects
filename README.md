@@ -90,8 +90,10 @@ Full code in section below
 
 [Building matrix inverse function via adjoint method](https://github.com/justinherman42/Data_Science_Projects/tree/master/Math_Statistics/Matrix_inverse_function)
 <br>
+
 [Build N fold convolution function](https://github.com/justinherman42/Data_Science_Projects/tree/master/Math_Statistics/Nfold_convolution_function)
 +  <span style="color:black">Function is applied to determine likelihood of hits in a baseball playoff series and career, given prob distribution for at bats</span>
 <br>
+
 [Simulation and Markov methods](https://github.com/justinherman42/Data_Science_Projects/tree/master/Math_Statistics/Simulation_and_Markov)
 +  <span style="color:black">Solves optimal gambling strategy problem</span>
