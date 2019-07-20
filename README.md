@@ -83,7 +83,9 @@ Full code in section below
 [Build blockchain object project](https://github.com/justinherman42/Data_Science_Projects/tree/master/Python/Build%20Blockchain)
 
 ## Statistics Projects
+
 [Poisson distribution experimentation](https://github.com/justinherman42/Data_Science_Projects/tree/master/Math_Statistics/Applying_poisson) 
+
 +  <span style="color:black">Answer simple math question via simulation and Poisson distribution</span>
 <br>
 [Building matrix inverse function via adjoint method](https://github.com/justinherman42/Data_Science_Projects/tree/master/Math_Statistics/Matrix_inverse_function)
