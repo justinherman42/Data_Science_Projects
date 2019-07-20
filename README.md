@@ -8,10 +8,15 @@ Full code in section below
 
 **NLP**
 + [Game_Of_Thrones_NLP_Network_Analysis(Python)](https://nbviewer.jupyter.org/github/justinherman42/Data_Science_Projects/blob/master/Python/Game_Of_Thrones__NLP_Network_Analysis/Game_of_Thrones_NER.ipynb)
-
+  
+ [![Foo](got_graph_tn.jpg)](https://nbviewer.jupyter.org/github/justinherman42/Data_Science_Projects/blob/master/Python/Game_Of_Thrones__NLP_Network_Analysis/Game_of_Thrones_NER.ipynb)
+  
 **EDA and Visualization**
 + [2016_Presidential_Election_exploration (R)](http://rpubs.com/justin_herman_42/457852)
-  
+ 
+  [![Foo](election_tn.jpg)](http://rpubs.com/justin_herman_42/457852)
+ 
+ 
 **Data Manipulation**
 + [Create Custom Poker HUD (R)](https://rpubs.com/justin_herman_42/385739)
 + [Build blockchain object project (Python)](https://github.com/justinherman42/Data_Science_Projects/blob/master/Python/Build%20Blockchain/Blockchain.py)
