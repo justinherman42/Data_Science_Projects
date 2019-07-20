@@ -1,5 +1,5 @@
 ---
-theme: jekyll-theme-cayman
+layout: default
 ---
 
 <a id='Tweet Classification'></a>
