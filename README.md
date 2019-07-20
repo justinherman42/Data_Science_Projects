@@ -85,9 +85,9 @@ Full code in section below
 ## Statistics Projects
 
 [Poisson distribution experimentation](https://github.com/justinherman42/Data_Science_Projects/tree/master/Math_Statistics/Applying_poisson) 
-
 +  <span style="color:black">Answer simple math question via simulation and Poisson distribution</span>
 <br>
+
 [Building matrix inverse function via adjoint method](https://github.com/justinherman42/Data_Science_Projects/tree/master/Math_Statistics/Matrix_inverse_function)
 <br>
 [Build N fold convolution function](https://github.com/justinherman42/Data_Science_Projects/tree/master/Math_Statistics/Nfold_convolution_function)
