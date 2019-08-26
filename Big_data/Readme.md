@@ -1,0 +1,1 @@
+The above projects were taken from my big data class in the fall of 2018.  They explore the usage of cloud services alongside some theoretical questions about the benefits of different big data infrastructures
