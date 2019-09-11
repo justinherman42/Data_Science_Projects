@@ -1,0 +1,39 @@
+---
+title: "Proposal"
+author: "Justin Herman"
+date: "8/28/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+## Idea
+
+Look at how publications are treating 2020 democratic candidates.  
+
+## General Framework 
+
++ Access the Newsapi.- This API lets you query over 150 major news networks for metadata on news articles relating to a search term. It only returns first 200 words of an article.  Feed  these links into newspaper3k api 
++ Newspaper3k api - Given links returns full body of articles
++ Storage-    Run query’s  over next month to collect data as needed.  
++ Twitter API- Simultaneously I would like to figure out a way via twitter API to track reactions to these articles 
+
+
+
+## Modeling 
+
++ Option 1-
+
+Identify sentences that would relate to individual candidates.  We create an aggregated sentiment score by publication and/or author as it relates to each candidate.  We simply update and aggregate this score over time to see how publications are treating different candidates.  With this route, I don't believe we would need to score a test set manually. However, we would need to tune the sentiment analysis to capture deceptive political language  
+
++ Option 2 -
+
+Custom scoring by publication to detect bias.  This would require careful consideration of what represents bias, presumably looking at in on an economic scale.  I'd prefer economic scale, because I believe such a lens is absent from most analysis of the media. We would need to score articles manually for our test set and create features that capture economic ideology. Examples of some features would be terms that help identify an article on an economic scale.   Terms to look for; 99%, rich versus poor, balanced budget, free trade etc..  Context matters and I believe this is the more difficult route. 
+
+## Finished Product
+
+Develop a dashboard and allow users to see how different publications may be expressing bias.  I found a writeup for a similar project on the Canadian election which we could use as a foundation for our study [link](https://medium.com/sfu-big-data/developing-a-nlp-based-pr-platform-for-the-canadian-elections-d63ebed6b2f3).   

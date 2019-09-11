@@ -1,0 +1,755 @@
+---
+title: "API_request_project"
+author: "Justin Herman"
+date: "8/19/2019"
+output:
+  html_document:
+    theme: "simplex"
+    highlight: 'pygments'
+---
+
+<style>h1{text-transform: capitalize}</style>
+<style>h2{text-transform: capitalize}</style>
+<style>h3{text-transform: capitalize}</style>
+<style>p:first-letter {text-transform: capitalize}</style>
+<style>li:first-letter {text-transform: capitalize}</style>
+
+<style type="text/css">body{ /* Normal  */ font-size: 18px;}}</style>
+
+# Overview {.tabset .tabset-fade}
+
+This project was created to form an ETL pipeline for an API. I accessed financial data API from [link](https://financialmodelingprep.com/developer/docs/) and built out a MYSQL database. R and R libraries were used as my interface with the API and the MYSQL database. All packages were listed in the first section **Library Import**. The report was created as an accompanying html document and will live in my GitHub, the report may be periodically updated. 
+
+I decided to explore US regional banks. I built a function to access the API and convert JSON data to a R Dataframe. This function also cleans the data and preps it for our SQL database. Another function was used to insert that R Dataframe into a MYSQL database. After the data was inserted into SQL, SQL queries were executed within R, and the query results were displayed in a datatable in R.  Datatables are convenient, as they give users more flexibility than traditional print statements. SQL Windows functions were then used to manipulate the SQL data to explore aggregated behaviors. Some of those functions were generalized to handle any numeric column. Generally, the functions are there to show an understanding of SQL and how to perform data manipulation.   
+
+## Build out  functions  {.tabset .tabset-fade}
+
+In the section below, the API is accessed and the JSON data is converted and inserted into a MYSQL database.  After reading through all the subsections below, please see windows functions section to the right for more exploration. 
+
+### Library import
+```{r,message=F,warning=FALSE}
+rm(list=ls())
+library(httr)
+library(jsonlite)
+library(lubridate)
+library(tidyverse)
+library(RMariaDB)
+library(DT)
+library(knitr)
+library(kableExtra)
+
+
+pack_ver1 <- cbind("httr",as.character(packageVersion("httr")))
+pack_ver2 <- cbind("jsonlite",as.character(packageVersion("jsonlite")))
+pack_ver3 <- cbind("lubridate",as.character(packageVersion("lubridate")))
+pack_ver4 <- cbind("tidyverse",as.character(packageVersion("tidyverse")))
+pack_ver5 <- cbind("RMariaDB",as.character(packageVersion("RMariaDB")))
+pack_ver6 <- cbind("DT",as.character(packageVersion("DT")))
+pack_ver7 <- cbind("knitr",as.character(packageVersion("knitr")))
+pack_ver8 <- cbind("kableExtra",as.character(packageVersion("kableExtra")))
+
+pack_versions <- as.data.frame(rbind(pack_ver1,pack_ver2,pack_ver3,pack_ver4,pack_ver5,pack_ver6,pack_ver7,pack_ver8))
+colnames(pack_versions) <- c("Package Name", "Version")
+kable(pack_versions)
+```
+
+### Functions 
+
+
+<p style="font-family: times, serif; font-size:16pt; font-style:italic">**json_to_df**</p> 
++ Accesses our financial data API and returns a cleaned DF
++ Inputs
+    + Tag(char)
+        + Stock ticker 
+
+<p style="font-family: times, serif; font-size:16pt; font-style:italic">**Build_table**</p> 
+
++ Function  takes the result of **json_to_df**, a dataframe with stock financial information, and runs a query to create an SQL table from that dataframe
++ Returns an error if table already exists, prompting user to rename table or run the **update_table** function
++ To prevent duplicate data, the function creates a primary key based on date+company tag 
++ Inputs
+    + Tag(char)
+        + Stock ticker
+    + Table_name(char)
+        + User choice for MYSQL table name
+
+<p style="font-family: times, serif; font-size:16pt; font-style:italic">**Update table** </p> 
+
++ Function loops over a list of stock market tags and inserts them into a previously created MYSQL database
++ Function has error handling so that it will refuse to add a dataframe from the loop if it detects duplicate data in that dataframe
+    + If dataframe has duplicates an error will print to screen that "data for {tag} was not added" and the loop will move onto next item in list
+    + If dataframe is inserted successfully, function will print to screen to indicate is was updated
++ Inputs
+    + tags (list of chars)
+    + table_name(char)
+        + User choice for MYSQL table name
+
+ 
+        
+```{r}
+### Function accesses financial data API and returns a dataframe ready to be inserted into SQL 
+### Function takes companies stock tag as an input string   
+json_to_df <- function(tag)
+    {
+    ## Build url
+    url <- paste("https://financialmodelingprep.com/api/v3/financials/income-statement/",tag,"?period=quarter",sep="")
+    headers = c('Upgrade-Insecure-Requests' = '1')
+    params = list(`datatype` = 'json')
+    
+    ## Make request
+    result <- GET(url = url, httr::add_headers(.headers=headers), query = params)
+    result<- rawToChar(result$content)
+    df <- as.data.frame(fromJSON(result)[2])
+    
+    ## Fix table column names- remove financials. and special char "."
+    colnames(df) <- gsub("financials.|\\.","",colnames(df))
+    
+    ## Convert Date to datetime/ rename date as reportdate
+    df$Report_Date <- as.Date(df$date, '%Y-%m-%d')
+    df <-  df %>%
+        select(-date)
+    
+    ## Build tag column to identify stock ticker
+    df$Company <- tag
+    
+    ## Build primary key column convert financial data to numeric
+    df$Id <- paste(as.character(df$Report_Date),df$Company,sep="-")
+    cols.num <- colnames(df)[1:31]
+    df[,cols.num] <- sapply(df[cols.num],as.numeric)
+    
+    ## Data check for NA-
+    table(is.na(df))
+    return(df)
+}
+
+
+### Function initalizes table creation in mysql
+### takes stock tag(chracter), tablename(character)
+### If table already exists, will tell you to use different name or use update function instead
+build_table <- function(tag,tablename){
+    
+        ## import df from json api call function 
+        df <- json_to_df(tag)
+    
+        ## grab credentials from credential file
+        db_credentials<-"C:\\Users\\justin\\Desktop\\xmedia.cnf"
+        my_sql_db<-"xmedia"
+        
+        ## make connection
+        my_conn<-dbConnect(RMariaDB::MariaDB(),
+                           default.file=db_credentials,
+                           group=my_sql_db)
+
+        ## Build table from df
+        tryCatch(dbWriteTable(my_conn, value = df, 
+                              name = tablename,
+                              overwrite =FALSE,
+                              row.names = FALSE) ,error= function(e){
+                              print("table can not be overwritten and already exists. 
+                                    Please use update table function or change name")})
+        
+        ## Set primary key to Companytag+Date
+        res <- dbSendQuery(my_conn, paste("ALTER TABLE",tablename,"ADD CONSTRAINT websites_pk
+                                 PRIMARY KEY (`Id`(40)) ;"))
+        ## Disconnect
+        dbClearResult(res)
+        dbDisconnect(my_conn)
+}
+
+
+### loops through list of stock tags and updates SQL DB 
+### Will not update db if any of stock data in new queried df already exists in SQL DB
+update_table <- function(tags,tablename){
+    for (tag in tags){
+        
+        ## set error checker
+        skip_to_next <- FALSE
+        
+        ## import df from json api call function 
+        df <- json_to_df(tag)
+        
+        ## grab credentials from credential file
+        db_credentials<-"C:\\Users\\justin\\Desktop\\xmedia.cnf"
+        my_sql_db<-"xmedia"
+        
+        ## make connection
+        my_conn<-dbConnect(RMariaDB::MariaDB(),
+                           default.file=db_credentials,
+                           group=my_sql_db) 
+        
+        # insert df into SQL.  Catches primary key conflicts(duplicate data), 
+        # prints stock wasnt updated, and moves on in loop
+        tryCatch(dbWriteTable(my_conn, value = df, 
+                          name = tablename, 
+                          overwrite= FALSE,   
+                          append = TRUE,                         
+                          row.names = FALSE),error= function(e){skip_to_next <<- TRUE})
+         if(skip_to_next) { print(paste("Company",tag, "data already exists in DB"))
+                            gc()
+                            dbDisconnect(my_conn)
+                            next }
+        gc()
+        dbDisconnect(my_conn)
+        print(paste("db was updated correctly with: ",tag ))
+    }
+}
+
+
+```
+
+
+### Call Functions and Build Database {.tabset .tabset-fade}
++ Create a list of banks to explore
++ Run functions to insert that list into MYSQL database
+
+```{r}
+
+top_10_banks <- c('WFC', 'PNC', 'BBT', 'STI', 'KEY', 'MTB', 'HBAN', 'ZION', 'CMA', 'FITB')
+## build a table in sql
+build_table('USB',"financials")
+update_table(top_10_banks,"financials")
+```
+
+### Explore SQL Database
+
++ Experiment with SQL database
+
+```{r}
+## practice some query with db
+db_credentials<-"C:\\Users\\justin\\Desktop\\xmedia.cnf"
+my_sql_db<-"xmedia"
+my_conn<-dbConnect(RMariaDB::MariaDB(),
+                   default.file=db_credentials,
+                   group=my_sql_db) 
+
+## print out description of table
+print(dbGetQuery(my_conn, "DESCRIBE financials;"))
+
+## Check for NA values
+res <- dbGetQuery(my_conn, "SELECT * FROM financials;")
+table(is.na(res))
+
+## look at sql db
+res <- dbGetQuery(my_conn, "SELECT * FROM financials;")
+datatable(res)
+gc()
+dbDisconnect(my_conn)
+```
+
+
+
+
+##   Windows Functions {.tabset .tabset-fade}
+
+
+I look at 10 of the largest publicly traded banks by capsize.  Windows functions can be useful to compare value over different periods. The main windows functions used are 
+
++ LAG- allows us to select a value that lags current value
++ DENSERANK- allows us to rank results based upon partition 
++ ROWS- allows us to grab rows preceding our current value
+
+In my queries, LAG is used to create a growth column.  Quarterly data can suffer from seasonality, therefore, we can use LAG set with 4 to compare the YOY(year over year) quarterly growth.  For example, in our data (lag,4) returns Q1 2018 if our current value is Q1 2019.  I then use a growth formula to measure growth.  Next, I used DENSERANK to rank the results of our LAG query. This function builds a ranking based on growth and can be modified to look at industry level versus company level quarterly performance rankings.  The last function builds a three-year rolling average.  It's designed  to demonstrate how one would apply a cumulative sum type windows function query.
+
+### Build Windows Functions
+
++ All windows functions are listed below, but they will be called individually in their sections as well. Here, they are listed with some extra inline notes
+
+```{r}
+### Uses Lag to build Year over year quarterly growth for desired columns
+
+yty_growth <- function(statistic,table_name){
+    my_conn<-dbConnect(RMariaDB::MariaDB(),
+                   default.file=db_credentials,
+                   group=my_sql_db) 
+       query <- paste("WITH Last_Year  AS (SELECT Company,Report_Date,",statistic,", LAG(",statistic, ",4) OVER( PARTITION BY Company ORDER BY Report_Date)  Last_Year_",statistic," FROM ",table_name,") SELECT Company,Report_Date,",statistic, ",Last_Year_",statistic,", ROUND((Last_Year_",statistic,"-",statistic,")/Last_Year_",statistic,"*-1,3) AS Growth FROM Last_Year;",sep="" )
+    res <- dbGetQuery(my_conn,query)
+    datatable(res)
+    gc()
+    dbDisconnect(my_conn)
+    return(datatable(res))
+}
+
+
+### Uses dense rank to rank to first develop a growth percent by any col and then rank those growth rates
+### Function inputs are statistic, table name, partition set
+### if input partition is set to 1, then function will rank individual Company performance
+### If partition is not set to 1, function will return ranks of the aggregate banking industry
+
+yty_ranking <- function(statistic,table_name,partition=0){
+    ##Build connection
+    my_conn<-dbConnect(RMariaDB::MariaDB(),
+                   default.file=db_credentials,
+                   group=my_sql_db)
+    
+    ##Build query without partition
+    if (partition==0){
+    query <- paste("WITH Last_Year  AS (SELECT Company,Report_Date,",
+                   statistic,", LAG(",statistic, ",4) OVER( PARTITION BY Company ORDER BY Report_Date) Last_Year_",statistic,
+                   " FROM ",table_name," ),", statistic,"_table AS (SELECT Company,Report_Date,",statistic,
+                   ",Last_Year_",statistic,", ROUND((Last_Year_",statistic,"-",statistic,")/Last_Year_",statistic,
+                   "*-1,3) AS Growth FROM Last_Year) SELECT *, CASE WHEN Growth IS NOT NULL then DENSE_RANK() OVER ( ORDER BY Growth desc) end) AS ranked_Growth FROM ",statistic,"_table;",sep="")
+    ## Send query request and display result
+    res <- dbGetQuery(my_conn,query)
+    datatable(res)
+    gc()
+    dbDisconnect(my_conn)
+    return(datatable(res))
+    }
+    
+    ##Build query with partition
+    else {
+        query <- paste("WITH Last_Year  AS (SELECT Company,Report_Date,",statistic,", LAG(",statistic, ",4) OVER( PARTITION BY Company ORDER BY Report_Date) Last_Year_",statistic," FROM ",table_name," ),", statistic,"_table AS (SELECT Company,Report_Date,",statistic,",Last_Year_",statistic,", ROUND((Last_Year_",statistic,"-",statistic,")/Last_Year_",statistic,"*-1,3) AS Growth FROM Last_Year) SELECT *, (CASE WHEN Growth IS NOT NULL then DENSE_RANK() OVER ( PARTITION BY Company ORDER BY Growth desc) end) AS ranked_Growth FROM ",statistic,"_table;",sep="")
+    
+    ## Send query request and display result
+    res <- dbGetQuery(my_conn,query)
+    datatable(res)
+    gc()
+    dbDisconnect(my_conn)
+    return(datatable(res))
+    }
+}
+
+## aggregate data to yearly data and build out a 3 year moving  average 
+## Query does not take any inputs, it's to show how you would create a moving average 
+## similar to creating a cumulative sum value for customers
+
+yearly_moving_avg <- function()
+{
+    my_conn<-dbConnect(RMariaDB::MariaDB(),
+                   default.file=db_credentials,
+                   group=my_sql_db)
+    query <- paste(
+    " WITH yearly_revenue AS (SELECT Company, Year(Report_Date) AS years, sum(revenue) AS revenues FROM financials GROUP BY Company,",
+    "Year(Report_Date) ORDER BY Company,Year(Report_Date)) SELECT *, CASE WHEN years not in (2009,2010)	then sum(revenues) OVER",
+    "(ORDER BY Company, years rows between 3 preceding and current row) else null end AS 'Three_Year_Running_Avg' FROM yearly_revenue ORDER BY Company,years;", sep="" )
+    
+    ## Send query request and display result
+    res <- dbGetQuery(my_conn,query)
+    datatable(res)
+    gc()
+    dbDisconnect(my_conn)
+    return(datatable(res))
+}           
+```
+
+### Execute yty_Growth 
+
+#### With Revenue 
+
++  Inputs 
+    + Statistic (any numeric column)
+    + Tablename (any character value) 
++  Returns YOY Growth rate for company performance
++  Creates a CTE table Last_Year that uses a lag of 4 to grab the last year quarterly results and builds that column as a new column
++  The function finishes by building a Growth rate based on the newly created last year column versus the current year value.
+
+```{r}
+### Uses Lag to build Year over year quarterly Growth for desired columns
+yty_growth <- function(statistic,table_name){
+    my_conn<-dbConnect(RMariaDB::MariaDB(),
+                   default.file=db_credentials,
+                   group=my_sql_db) 
+       query <- paste("WITH Last_Year AS (SELECT Company,Report_Date,",statistic,", LAG(",statistic, ",4) Over( PARTITION BY Company ORDER BY Report_Date)  Last_Year_",statistic," FROM ",table_name,") SELECT Company,Report_Date,",statistic, ",Last_Year_",statistic,", ROUND((Last_Year_",statistic,"-",statistic,")/Last_Year_",statistic,"*-1,3) AS Growth FROM Last_Year;",sep="" )
+       print(query)
+    res <- dbGetQuery(my_conn,query)
+    write.csv(res, file = paste("yty_growth",statistic,".csv",sep="" ))
+    gc()
+    dbDisconnect(my_conn)
+    return(datatable(res))
+}
+
+## call function
+yty_growth("Revenue","financials")
+```
+
+\n
+\n
+#### With Operating Expenses
+
++ Function is identical to above function
+    + See Execute yty_growth with Revenue section for explanation of function 
+
+```{r}
+yty_growth <- function(statistic,table_name){
+    my_conn<-dbConnect(RMariaDB::MariaDB(),
+                   default.file=db_credentials,
+                   group=my_sql_db) 
+       query <- paste("WITH Last_Year  AS (SELECT Company,Report_Date,",statistic,", LAG(",statistic, ",4) Over( PARTITION BY Company ORDER BY Report_Date)  Last_Year_",statistic," FROM ",table_name,") SELECT Company,Report_Date,",statistic, ",Last_Year_",statistic,", ROUND((Last_Year_",statistic,"-",statistic,")/Last_Year_",statistic,"*-1,3) AS growth FROM Last_Year;",sep="" )
+    print(query)
+    res <- dbGetQuery(my_conn,query)
+    datatable(res)
+    gc()
+    dbDisconnect(my_conn)
+    return(datatable(res))
+}
+
+## call function
+yty_growth("OperatingExpenses","financials")
+
+```
+
+### Execute yty_ranking 
+
+#### PARTIONED BY Industry
+
++ The query uses a CTE to build a growth rate table(Last_Year). It then uses another CTE to call Last_Year and build a growth_rate column for input statistic.  Finally it uses the results FROM the 2nd CTE and runs DENSERANK of the growth_rate with the option to additionally Partition the window on industry level or Company level.
++ If partition is set to 0, it will execute the query as grouped at the industry level.  
++ If partion is set to another integer value, it will return company level ranked results 
+  + The below function returns rank at the industry level
+
+```{r}
+yty_ranking <- function(statistic,table_name,partition=0){
+    ##Build connection
+    my_conn<-dbConnect(RMariaDB::MariaDB(),
+                   default.file=db_credentials,
+                   group=my_sql_db)
+    
+    ##Build query without partition
+    if (partition==0){
+    query <- paste("WITH Last_Year  AS (SELECT Company,Report_Date,",
+                   statistic,", LAG(",statistic, ",4) Over( PARTITION BY Company ORDER BY Report_Date) Last_Year_",statistic,
+                   " FROM ",table_name," ),", statistic,"_table AS (SELECT Company,Report_Date,",statistic,
+                   ",Last_Year_",statistic,", ROUND((Last_Year_",statistic,"-",statistic,")/Last_Year_",statistic,
+                   "*-1,3) AS growth FROM Last_Year) SELECT *, (CASE WHEN growth IS NOT NULL then DENSE_RANK() OVER ( ORDER BY growth desc) end) AS ranked_growth FROM ",statistic,"_table;",sep="")
+    print(query)
+    
+    ## Send query request and display result
+    res <- dbGetQuery(my_conn,query)
+    datatable(res)
+    gc()
+    dbDisconnect(my_conn)
+    return(datatable(res))
+    }
+    
+    ##Build query with partition
+    else {
+        query <- paste("WITH Last_Year  AS (SELECT Company,Report_Date,",statistic,", LAG(",statistic, ",4) Over( PARTITION BY Company ORDER BY Report_Date) Last_Year_",statistic," FROM ",table_name," ),", statistic,"_table AS (SELECT Company,Report_Date,",statistic,",Last_Year_",statistic,", ROUND((Last_Year_",statistic,"-",statistic,")/Last_Year_",statistic,"*-1,3) AS growth FROM Last_Year) SELECT *, (CASE WHEN growth IS NOT NULL then DENSE_RANK() OVER ( PARTITION BY Company ORDER BY growth desc) end) AS ranked_growth FROM ",statistic,"_table;",sep="")
+    print(query)
+    ## Send query request and display result
+    res <- dbGetQuery(my_conn,query)
+    datatable(res)
+    gc()
+    dbDisconnect(my_conn)
+    return(datatable(res))
+    }
+}
+
+## call function
+yty_ranking("Revenue","financials")
+```
+
+
+#### Partioned by Company
+
+**same function as above function **
+
++ See previous explanation
++ This function sets partition to 1 and displays industry level quarterly results
+
+
+```{r}
+yty_ranking <- function(statistic,table_name,partition=0){
+    ##Build connection
+    my_conn<-dbConnect(RMariaDB::MariaDB(),
+                   default.file=db_credentials,
+                   group=my_sql_db)
+    
+    ##Build query without partition
+    if (partition==0){
+    query <- paste("WITH Last_Year  AS (SELECT Company,Report_Date,",
+                   statistic,", LAG(",statistic, ",4) OVER( PARTITION BY Company ORDER BY Report_Date) Last_Year_",statistic,
+                   " FROM ",table_name," ),", statistic,"_table AS (SELECT Company,Report_Date,",statistic,
+                   ",Last_Year_",statistic,", ROUND((Last_Year_",statistic,"-",statistic,")/Last_Year_",statistic,
+                   "*-1,3) AS growth FROM Last_Year) SELECT *, (case when growth is not null then dense_rank() OVER ( ORDER BY growth desc) end) AS ranked_growth FROM ",statistic,"_table;",sep="")
+    print(query)
+    
+    ## Send query request and display result
+    res <- dbGetQuery(my_conn,query)
+    datatable(res)
+    gc()
+    dbDisconnect(my_conn)
+    return(datatable(res))
+    }
+    
+    ##Build query with partition
+    else {
+        query <- paste("WITH Last_Year  AS (SELECT Company,Report_Date,",statistic,", LAG(",statistic, ",4) OVER( PARTITION BY Company ORDER BY Report_Date) Last_Year_",statistic," FROM ",table_name," ),", statistic,"_table AS (SELECT Company,Report_Date,",statistic,",Last_Year_",statistic,", ROUND((Last_Year_",statistic,"-",statistic,")/Last_Year_",statistic,"*-1,3) AS growth FROM Last_Year) SELECT *, (case when growth is not null then dense_rank() OVER ( PARTITION BY Company ORDER BY growth desc) end) AS ranked_growth FROM ",statistic,"_table;",sep="")
+    print(query)
+    
+    ## Send query request and display result
+    res <- dbGetQuery(my_conn,query)
+    datatable(res)
+    gc()
+    dbDisconnect(my_conn)
+    return(datatable(res))
+    }
+}
+
+## call function
+yty_ranking("Revenue","financials",partition=1)
+```
+
+### Execute Yearly Moving Average
+
++ This function is more for show than utility
++ As the directions suggested attempting a windows function tracking cumsum values for customers, this query mimics that workflow.  It creates a three year moving average of the yearly revenue over a window including the 2 years prior.
+  + Grabbing the three-year average was random. I could have just created cumsum for revenue, but as that value doesn't mean much here, I figured I would add some moving parts to the query
+  + Another moving part is that the query first uses a CTE to build yearly summed data from our quarterly data
+  + The function uses that CTE table with the function ROWS to build the three year moving average.  It adds CASEWHEN in order to ensure a NUll result for the years 2009 and 2010(less than 3 years)
+    + One dangerous part of the query is if data is incomplete it will return some averages that may not be three year moving averages. In order to return Null for the first 2 values (2009 and 2010) I created a case when to return null for 2009 and 2010. If a company doesn't start in 2009, say it went public in 2011, then it's first and second running total would be "wrong". In our case all data is complete
+
+
+```{r}
+yearly_moving_avg <- function()
+{
+    my_conn<-dbConnect(RMariaDB::MariaDB(),
+                   default.file=db_credentials,
+                   group=my_sql_db)
+    query <- paste(
+    " WITH yearly_revenue AS (SELECT Company, Year(Report_Date) AS years, sum(revenue) AS revenues FROM financials GROUP BY Company,",
+    "Year(Report_Date) ORDER BY Company,Year(Report_Date)) SELECT *, CASE WHEN years NOT IN (2009,2010)	THEN SUM(revenues) OVER",
+    "(ORDER BY Company, years ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) ELSE NULL END AS 'Three_Year_Running_Avg' FROM yearly_revenue ORDER BY Company,years;", sep="" )
+    
+    ## Send query request and display result
+    res <- dbGetQuery(my_conn,query)
+    datatable(res)
+    gc()
+    dbDisconnect(my_conn)
+    return(datatable(res))
+}         
+
+## call function
+yearly_moving_avg()
+```
+
+
+
+## EDA In R  {.tabset .tabset-fade}
+
+This section is just an extremely fast overview of capabilities of R to pull in data and create tables and graphs.  We are simply exploring the revenue column and some quick visualizations for EDA. Overall little time was invested, but I will gladly show more if asked 
+
+### Call SQL Database
+
+```{r}
+my_conn<-dbConnect(RMariaDB::MariaDB(),
+                   default.file=db_credentials,
+                   group=my_sql_db)
+query <- "select revenue,RevenueGrowth, company, Report_date from financials"
+    
+## Send query request and display result
+res <- dbGetQuery(my_conn,query)
+revenue_df <- data.frame(res)
+gc()
+dbDisconnect(my_conn)
+```
+
+### Tables
+
+
+<p style="font-family: times, serif; font-size:16pt; font-style:italic">**Table of Revenue and Growth of Big Banks**</p>
+
+```{r,echo=FALSE}
+datatable(revenue_df)
+```
+
+<p style="font-family: times, serif; font-size:16pt; font-style:italic">**Table of Total Revenue From 2009-2019 of Big Banks**</p>
+
+```{r,echo=FALSE,warning=F}
+total_revnue <- revenue_df %>% 
+  group_by(company) %>% 
+  summarise(total_revenue= sum(revenue)) %>% 
+  arrange(-total_revenue)
+
+total_revnue %>% 
+  kable("html") %>% 
+  kable_styling()  
+```
+
+<p style="font-family: times, serif; font-size:16pt; font-style:italic">**Table of Average Quarterly Revenue From 2009-2019 of Big Banks**</p>
+
+```{r,echo=FALSE,warning=F}
+avg_quarterly_revenue <- revenue_df %>% 
+  group_by(company) %>% 
+  summarise(avg_quarterly_revnue= mean(revenue)) %>% 
+  arrange(-avg_quarterly_revnue)
+
+avg_quarterly_revenue %>% 
+  kable("html") %>% 
+  kable_styling()
+```
+
+<p style="font-family: times, serif; font-size:16pt; font-style:italic">**Table of Cumulative Sum of Revenue From 2009-2019 of Big Banks**</p>
+
+```{r,echo=FALSE,warning=F}
+cumsum_revnue <- revenue_df %>% 
+  group_by(company, Report_date) %>%
+  summarise(value = sum(revenue)) %>%
+  mutate(cum_sum_revenue_in_billions = cumsum(value)/1000000000)
+
+cumsum_revnue %>%
+  datatable()
+```
+
+### Graphs
+
+```{r,echo=FALSE,warning=F}
+
+library(ggplot2)
+
+ggplot(cumsum_revnue, aes(x = Report_date, y = cum_sum_revenue_in_billions, colour = company)) + 
+  geom_line(size = 1)+
+  geom_point()+ 
+  ggtitle("Cumulative Sum Revenue By Bank From 2009-20019  ")
+```
+
+We can see that Wells Fargo is way too large and it effects our comparisons.  Lets exclude Wells Fargo
+
+```{r,echo=FALSE,warning=F}
+exlcuding_wells_fargo <- cumsum_revnue %>% 
+  filter(company!="WFC")
+
+ggplot(exlcuding_wells_fargo, aes(x = Report_date, y = cum_sum_revenue_in_billions, colour = company)) + 
+  geom_line(size = 1)+
+  geom_point()+ 
+  ggtitle("Cumulative Sum Revenue By Bank From 2009-20019 Excluding Wells Fargo  ")
+```
+
+While the cumulative sum can give us a picture of overall strength in the market and while it appears some banks broke away around 2011, looking at quarterly revenue could yield more fruitful.
+
+```{r,echo=FALSE,warning=F}
+
+revenue_df <- revenue_df %>% 
+  filter(company!= "WFC")
+
+ggplot(revenue_df, aes(x = Report_date, y = revenue, colour = company)) + 
+  geom_line(size = 1)+
+  geom_point()+ 
+  ggtitle("Quarterly Revenue By Bank From 2009-2019 Excluding Wells Fargo  ")
+```
+
+The quarterly revenues give us a much clearer story.  Almost all the banks have increased revenue from 2009. We can explore growth rates like those we made in SQL as well.  Revenue Growth has always been present in the data, so we can just call the column and see that it matches up correctly off by less than .001 in 384/385 cases (rounding errors) with a custom built R function.  I print the R code below so you can see the ease of code required 
+
+```{r}
+revenue_df <- revenue_df %>% 
+  arrange(company, Report_date) %>% 
+  group_by(company) %>% 
+  mutate(last_year = lag(revenue,4)) %>% 
+  ungroup() %>% 
+  mutate(growth=round((last_year-revenue)/last_year*-1,3))
+
+## Growth table 
+datatable(revenue_df)
+
+
+## Compare growth table to tables existing growth rate 
+table((revenue_df$RevenueGrowth - revenue_df$growth)<.001)
+
+```
+
+Then we can graph growth rate
+
+```{r,echo=FALSE,warning=F}
+ggplot(revenue_df, aes(x = Report_date, y = growth, colour = company)) + 
+  geom_line(size = 1)+
+  geom_point()+ 
+  ggtitle("Growth Rate By Bank From 2009-20019")
+```
+
+Our graph allows us to see that there were some intense swings in the growth rate of HBAN and KEY My assumption would be they have relatively small cap sizes, or they experienced prolonged damage from the recession.  We can explore their cap size relative to other banks. Another thing to explore would be filtering this from 2012 forward to get a better idea of swings minus huge outliers and getting several years removed from recession.  We can also explore all negative growth rate quarters and see if there were any patterns.  We would likely want to build individual graphs of these banks as well.  
+
++ Get total revenue from 2009 to 2011 and rank it
++ We can see below that HBAN and KEY are in fact small cap banks, or at least were in 2009-2011
+
+```{r,echo=FALSE,warning=F}
+revenue_df %>% 
+  filter(year(Report_date)<2012) %>% 
+  group_by(company) %>% 
+  summarise(sum_revenue=sum(revenue)) %>% 
+  arrange(-sum_revenue) %>% 
+  kable("html") %>% 
+  kable_styling()
+  
+```
+
+Graphing HBAN and KEY only
+
+```{r,echo=FALSE,warning=F}
+
+revenue_df %>% 
+  filter(company %in% c("HBAN","KEY")) %>%
+  ggplot(., aes(x = Report_date, y = growth, colour = company)) + 
+  geom_line(size = 1)+
+  geom_point()+ 
+  ggtitle("growth rate for HBAN and KEY bank from 2009-20019")
+  
+```
+
+
+
+```{r,echo=FALSE,warning=F}
+twenty_eleven <- revenue_df %>% 
+  filter(year(Report_date)>2011)
+
+ggplot(twenty_eleven, aes(x = Report_date, y = growth, colour = company)) + 
+  geom_line(size = 1)+
+  geom_point()+ 
+  ggtitle("Growth Rate by Bank From 2012-20019")
+```
+
+
+Getting only negative growth rates 
+
+```{r,echo=FALSE,warning=F}
+negative_growth <- revenue_df %>% 
+  filter(growth<0)
+
+ggplot(negative_growth, aes(x = Report_date, y = growth, colour = company)) + 
+  geom_line(size = 1)+
+  geom_point()+ 
+  ggtitle("Negative Growth Rates Only by Bank from 2009-20019")
+```
+
+### Animated Cumulative Revenue Race
+
++ animation tracks cumulative revenue from 2009 through 2018.   
++ data is complete so no cartesian join was needed and I think its a cool way of visualizing campaign success.  
++ If we want to show a client how they have increased growth in some field versus the industry as a whole, this graph can show them where they started and the success and process of things we implemented to get them to where they are now relative to competitors .  
+
+```{r,warning=F,message=F}
+
+library(plotly)
+library(gganimate)
+
+cumsum_revnue <- cumsum_revnue %>%
+  ungroup() %>% 
+  arrange(Report_date) %>% 
+  mutate(company= as.factor(company)) %>% 
+  filter(year(Report_date)<2019) %>% 
+  group_by(Report_date) %>%
+  mutate(ordering = min_rank(-cum_sum_revenue_in_billions * 1.0)) %>%
+  ungroup() 
+
+# animated  barplot Race for cumulative revenue:
+my_animation <- cumsum_revnue %>% 
+  ggplot( aes(x=ordering,group = company,fill=company)) + 
+#  geom_bar(stat='identity')+
+geom_tile(aes(y =cum_sum_revenue_in_billions/2 , 
+                height = cum_sum_revenue_in_billions,
+                width = 0.9), alpha = 0.9) +
+  geom_text(aes(y = cum_sum_revenue_in_billions, label = company), vjust = -0.5) +
+  # text in x-axis (requires clip = "off" in coord_cartesian)
+  geom_text(aes(y = 0, label = company), vjust = 2) +
+  ylab("Cumulative Revenue Race pre 2019") +
+  coord_cartesian(clip = "off", expand = FALSE) +
+  labs(title=paste("CUMULATIVE Revenue From  {closest_state}"), x = "") +
+  theme(plot.title = element_text(hjust = 1, size = 22),
+        axis.ticks.x = element_blank(),
+        axis.text.x  = element_blank()) + 
+  transition_states(Report_date, 
+                    transition_length = 2, state_length = 1) 
+
+animate(my_animation, 200, fps = 10, duration = 25, width = 800, height = 600, renderer = gifski_renderer("animation/this.gif") )
+
+```
+
+
